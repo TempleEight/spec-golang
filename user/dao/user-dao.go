@@ -23,6 +23,7 @@ func GetUser(id int64) (*UserGetResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer db.Close()
 
 	var user UserGetResponse
 	err = db.QueryRow("SELECT * FROM Users WHERE id = $1", id).Scan(&user.ID, &user.Name)
