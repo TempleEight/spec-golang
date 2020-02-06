@@ -3,7 +3,6 @@ package dao
 import (
 	"database/sql"
 	"fmt"
-	"log"
 
 	// pq acts as the driver for SQL requests
 	_ "github.com/lib/pq"
@@ -22,7 +21,7 @@ func GetUser(id int64) (*UserGetResponse, error) {
 	connStr := "user=postgres dbname=postgres host=user-db sslmode=disable"
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	var user UserGetResponse
