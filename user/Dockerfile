@@ -7,6 +7,7 @@ COPY . .
 RUN apk add --no-cache git
 
 RUN go get github.com/gorilla/mux
+RUN go get github.com/lib/pq
 
 RUN go build -o user
 
