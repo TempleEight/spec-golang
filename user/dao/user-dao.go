@@ -2,7 +2,6 @@ package dao
 
 import (
 	"database/sql"
-	"fmt"
 
 	// pq acts as the driver for SQL requests
 	_ "github.com/lib/pq"
@@ -31,7 +30,7 @@ func GetUser(id int64) (*UserGetResponse, error) {
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			return nil, fmt.Errorf("User for ID %d does not exist", id)
+			return nil, ErrUserNotFound(id)
 		default:
 			return nil, err
 		}
