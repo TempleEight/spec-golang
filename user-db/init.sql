@@ -1,3 +1,6 @@
-CREATE TABLE Users (id INT, name TEXT);
+CREATE TABLE Users (
+    id SERIAL PRIMARY KEY,
+    name TEXT
+);
 
-INSERT INTO Users (id, name) VALUES (1, 'Andrew');
+INSERT INTO Users (name) VALUES ('Andrew');
