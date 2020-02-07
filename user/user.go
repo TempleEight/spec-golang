@@ -53,6 +53,8 @@ func userGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func userCreateHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
 	// Decode request
 	var req dao.UserCreateRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
