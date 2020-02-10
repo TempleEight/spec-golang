@@ -19,13 +19,20 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/user", userCreateHandler).Methods(http.MethodPost)
 	r.HandleFunc("/user/{id}", userGetHandler).Methods(http.MethodGet)
+	r.Use(jsonMiddleware)
 
 	log.Fatal(http.ListenAndServe(":80", r))
 }
 
-func userGetHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+func jsonMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// All responses are JSON, set header accordingly
+		w.Header().Set("Content-Type", "application/json")
+		next.ServeHTTP(w, r)
+	})
+}
 
+func userGetHandler(w http.ResponseWriter, r *http.Request) {
 	userIDStr := mux.Vars(r)["id"]
 	if len(userIDStr) == 0 {
 		http.Error(w, CreateErrorJSON("No user ID provided"), http.StatusBadRequest)
@@ -53,9 +60,6 @@ func userGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func userCreateHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	// Decode request
 	var req dao.UserCreateRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
