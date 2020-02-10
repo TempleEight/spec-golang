@@ -52,7 +52,7 @@ services:
     restart: on-failure
 
   kong:
-    image: kong:latest
+    image: kong:2.0.1
     user: kong
     depends_on:
       - kong-db
@@ -83,13 +83,13 @@ services:
     restart: on-failure
     
   kong-db:
-    image: postgres:9.5
+    image: postgres:12.1
     environment:
       - POSTGRES_DB=kong
       - POSTGRES_PASSWORD=kong
       - POSTGRES_USER=kong
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "${KONG_PG_USER:-kong}"]
+      test: ["CMD", "pg_isready", "-U", "kong"]
       interval: 30s
       timeout: 30s
       retries: 3
