@@ -8,11 +8,16 @@ import (
 	"strconv"
 
 	"github.com/TempleEight/spec-golang/user/dao"
+	valid "github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
 )
 
 func main() {
+	// Require all struct fields by default
+	valid.SetFieldsRequiredByDefault(true)
+
 	r := mux.NewRouter()
+	r.HandleFunc("/user", userCreateHandler).Methods(http.MethodPost)
 	r.HandleFunc("/user/{id}", userGetHandler).Methods(http.MethodGet)
 
 	log.Fatal(http.ListenAndServe(":80", r))
@@ -45,4 +50,32 @@ func userGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(user)
+}
+
+func userCreateHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// Decode request
+	var req dao.UserCreateRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		errMsg := CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	_, err = valid.ValidateStruct(req)
+	if err != nil {
+		errMsg := CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	response, err := dao.CreateUser(req)
+	if err != nil {
+		errMsg := CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(response)
 }
