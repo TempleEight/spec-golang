@@ -80,3 +80,4 @@ func CreateUser(request UserCreateRequest) (*UserCreateResponse, error) {
 
 	return &user, nil
 }
+
