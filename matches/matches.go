@@ -12,7 +12,7 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/matches", matchGetHandler).Methods(http.MethodGet)
 
-	log.Fatal(http.ListenAndServe(":80", r))
+	log.Fatal(http.ListenAndServe(":81", r))
 }
 
 func matchGetHandler(w http.ResponseWriter, r *http.Request) {
