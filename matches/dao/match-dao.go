@@ -25,8 +25,8 @@ type MatchListResponse struct {
 
 // MatchCreateRequest contains the information required to create a new match
 type MatchCreateRequest struct {
-	ID1 string `valid:"type(string),required,stringlength(1|255)"`
-	ID2 string `valid:"type(string),required,stringlength(1|255)"`
+	idOne string `valid:"type(string),required,stringlength(1|255)"`
+	idTwo string `valid:"type(string),required,stringlength(1|255)"`
 }
 
 // MatchCreateResponse contains the information stored about the newly created match
@@ -37,6 +37,7 @@ type MatchCreateResponse struct {
 	MatchedOn string
 }
 
+// MatchUpdateRequest contains the information required to update a match
 type MatchUpdateRequest struct {
 	ID      int
 	UserOne int
@@ -129,8 +130,9 @@ func ListMatch(id int64) (*MatchListResponse, error) {
 	return &matches, nil
 }
 
+// CreateMatch inserts a new match into the database given two user IDs
 func CreateMatch(request MatchCreateRequest) (*MatchCreateResponse, error) {
-	row, err := executeQueryWithRowResponse("INSERT INTO Matches (userOne, userTwo, matchedOn) VALUES ($1, $2, NOW()) RETURNING *", request.ID1, request.ID2)
+	row, err := executeQueryWithRowResponse("INSERT INTO Matches (userOne, userTwo, matchedOn) VALUES ($1, $2, NOW()) RETURNING *", request.idOne, request.idTwo)
 	if err != nil {
 		return nil, err
 	}
@@ -149,6 +151,7 @@ func CreateMatch(request MatchCreateRequest) (*MatchCreateResponse, error) {
 	return &match, nil
 }
 
+// UpdateMatch updates an already existing match to two user IDs
 func UpdateMatch(request MatchUpdateRequest) error {
 	rowsAffected, err := executeQuery("UPDATE Matches SET userOne = $1, userTwo = $2 WHERE id = $3", request.UserOne, request.UserTwo, request.ID)
 	if err != nil {
@@ -160,6 +163,7 @@ func UpdateMatch(request MatchUpdateRequest) error {
 	return nil
 }
 
+// DeleteMatch deletes a match from the database
 func DeleteMatch(id int64) error {
 	rowsAffected, err := executeQuery("DELETE FROM Matches WHERE id = $1", id)
 	if err != nil {
