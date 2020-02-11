@@ -1,10 +1,10 @@
 package dao
 
 import (
-	// pq acts as the driver for SQL requests
 	"database/sql"
 	"errors"
 
+	// pq acts as the driver for SQL requests
 	_ "github.com/lib/pq"
 )
 
@@ -99,21 +99,21 @@ func GetMatch(id int64) (*MatchGetResponse, error) {
 }
 
 // ListMatch lists all the matches which feature a user
-func ListMatch(id1 int64) (*MatchListResponse, error) {
-	rows, err := executeQueryWithResponses("SELECT id FROM Matches WHERE userOne = $1 OR userTwo = $1", id1)
+func ListMatch(id int64) (*MatchListResponse, error) {
+	rows, err := executeQueryWithResponses("SELECT id FROM Matches WHERE userOne = $1 OR userTwo = $1", id)
 	if err != nil {
 		return nil, err
 	}
 
 	var matches MatchListResponse
-	matches.IDs = make([]int, 0)
+	matches.IDs = make([len(rows)]int, 0)
 	for rows.Next() {
 		var match int
 		err = rows.Scan(&match)
 		if err != nil {
 			switch err {
 			case sql.ErrNoRows:
-				return nil, ErrMatchNotFound(id1)
+				return nil, ErrMatchNotFound(id)
 			default:
 				return nil, err
 			}
@@ -130,7 +130,7 @@ func ListMatch(id1 int64) (*MatchListResponse, error) {
 }
 
 func CreateMatch(request MatchCreateRequest) (*MatchCreateResponse, error) {
-	row, err := executeQueryWithRowResponse("INSERT INTO Matches (userOne, userTwo, matchedOn) VALUES ($1, $2, NOW()) RETURNING *", request.ID1, request.ID1)
+	row, err := executeQueryWithRowResponse("INSERT INTO Matches (userOne, userTwo, matchedOn) VALUES ($1, $2, NOW()) RETURNING *", request.ID1, request.ID2)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,7 @@ func CreateMatch(request MatchCreateRequest) (*MatchCreateResponse, error) {
 }
 
 func UpdateMatch(request MatchUpdateRequest) error {
-	rowsAffected, err := executeQuery("UPDATE Matches SET userOne = $1, userTwo = $2 WHERE id = $3", request.userTwo, request.userOne, request.ID)
+	rowsAffected, err := executeQuery("UPDATE Matches SET userOne = $1, userTwo = $2 WHERE id = $3", request.userOne, request.userTwo, request.ID)
 	if err != nil {
 		return err
 	} else if rowsAffected == 0 {

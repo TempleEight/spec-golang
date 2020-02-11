@@ -14,7 +14,7 @@ import (
 
 func main() {
 	r := mux.NewRouter()
-	r.HandleFunc("/matches/{id1}", matchListHandler).Methods(http.MethodGet)
+	r.HandleFunc("/matches/{id}", matchListHandler).Methods(http.MethodGet)
 	r.HandleFunc("/match/{id}", matchGetHandler).Methods(http.MethodGet)
 	r.HandleFunc("/match", matchCreateHandler).Methods(http.MethodPost)
 	r.HandleFunc("/match", matchDeleteHandler).Methods(http.MethodDelete)
@@ -52,7 +52,7 @@ func matchGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func matchListHandler(w http.ResponseWriter, r *http.Request) {
-	userOneStr := mux.Vars(r)["id1"]
+	userOneStr := mux.Vars(r)["id"]
 	if len(userOneStr) == 0 {
 		http.Error(w, CreateErrorJSON("No match ID provided"), http.StatusBadRequest)
 		return
