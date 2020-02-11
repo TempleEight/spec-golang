@@ -13,9 +13,9 @@ const connStr = "user=postgres dbname=postgres host=matches-db sslmode=disable"
 // MatchGetResponse contains the information stored about a given match
 type MatchGetResponse struct {
 	ID        int
-	userOne   int
-	userTwo   int
-	matchedOn string
+	UserOne   int
+	UserTwo   int
+	MatchedOn string
 }
 
 // MatchListResponse contains the information stored about all matches
@@ -32,15 +32,15 @@ type MatchCreateRequest struct {
 // MatchCreateResponse contains the information stored about the newly created match
 type MatchCreateResponse struct {
 	ID        int
-	userOne   int
-	userTwo   int
-	matchedOn string
+	UserOne   int
+	UserTwo   int
+	MatchedOn string
 }
 
 type MatchUpdateRequest struct {
 	ID      int
-	userOne int
-	userTwo int
+	UserOne int
+	UserTwo int
 }
 
 func executeQueryWithResponses(query string, args ...interface{}) (*sql.Rows, error) {
@@ -85,7 +85,7 @@ func GetMatch(id int64) (*MatchGetResponse, error) {
 	}
 
 	var match MatchGetResponse
-	err = row.Scan(&match.ID, &match.userOne, &match.userTwo, &match.matchedOn)
+	err = row.Scan(&match.ID, &match.UserOne, &match.UserTwo, &match.MatchedOn)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
@@ -136,7 +136,7 @@ func CreateMatch(request MatchCreateRequest) (*MatchCreateResponse, error) {
 	}
 
 	var match MatchCreateResponse
-	err = row.Scan(&match.ID, &match.userOne, &match.userTwo, &match.matchedOn)
+	err = row.Scan(&match.ID, &match.UserOne, &match.UserTwo, &match.MatchedOn)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
@@ -150,7 +150,7 @@ func CreateMatch(request MatchCreateRequest) (*MatchCreateResponse, error) {
 }
 
 func UpdateMatch(request MatchUpdateRequest) error {
-	rowsAffected, err := executeQuery("UPDATE Matches SET userOne = $1, userTwo = $2 WHERE id = $3", request.userOne, request.userTwo, request.ID)
+	rowsAffected, err := executeQuery("UPDATE Matches SET userOne = $1, userTwo = $2 WHERE id = $3", request.UserOne, request.UserTwo, request.ID)
 	if err != nil {
 		return err
 	} else if rowsAffected == 0 {
