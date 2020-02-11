@@ -7,6 +7,7 @@ services:
       - "80:80" 
     networks: 
       - user-network 
+      - kong-network
 
   user-db:
     image: postgres:12.1 
@@ -20,9 +21,10 @@ services:
   matches:
     build: ./matches
     ports:
-      - "81:80" 
+      - "81:81" 
     networks: 
       - matches-network 
+      - kong-network
     
   matches-db:
     image: postgres:12.1 
@@ -32,8 +34,72 @@ services:
       - ./matches-db/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks: 
       - matches-network 
-  
+
+  # API Gateway
+  kong-migrations:
+    image: kong:latest 
+    command: kong migrations bootstrap && kong migrations up && kong migrations finish
+    depends_on:
+      - kong-db
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_DATABASE: kong 
+      KONG_PG_HOST: kong-db
+      KONG_PG_PASSWORD: kong 
+      KONG_PG_USER: kong 
+    networks:
+      - kong-network
+    restart: on-failure
+
+  kong:
+    image: kong:2.0.1
+    user: kong
+    depends_on:
+      - kong-db
+    environment:
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: '0.0.0.0:8001'
+      KONG_CASSANDRA_CONTACT_POINTS: kong-db
+      KONG_DATABASE: postgres
+      KONG_PG_DATABASE: kong 
+      KONG_PG_HOST: kong-db
+      KONG_PG_PASSWORD: kong
+      KONG_PG_USER: kong 
+    networks:
+      - kong-network
+    ports:
+      - "8000:8000/tcp"
+      - "8001:8001/tcp"
+      - "8443:8443/tcp"
+      - "8444:8444/tcp"
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    restart: on-failure
+    
+  kong-db:
+    image: postgres:12.1
+    environment:
+      - POSTGRES_DB=kong
+      - POSTGRES_PASSWORD=kong
+      - POSTGRES_USER=kong
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "kong"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+    restart: on-failure
+    stdin_open: true
+    tty: true
+    networks:
+      - kong-network
 
 networks:
   user-network:
   matches-network:
+  kong-network:

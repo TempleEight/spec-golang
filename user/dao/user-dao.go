@@ -30,6 +30,11 @@ type UserCreateResponse struct {
 	Name string
 }
 
+// UserUpdateRequest contains all the information about an existing user
+type UserUpdateRequest struct {
+	Name string `valid:"type(string),required,stringlength(2|255)"`
+}
+
 func executeQueryWithRowResponse(query string, args ...interface{}) (*sql.Row, error) {
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
@@ -37,6 +42,22 @@ func executeQueryWithRowResponse(query string, args ...interface{}) (*sql.Row, e
 	}
 	defer db.Close()
 	return db.QueryRow(query, args...), nil
+}
+
+// Executes a query, returning the number of rows affected
+func executeQuery(query string, args ...interface{}) (int64, error) {
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return 0, err
+	}
+	defer db.Close()
+
+	result, err := db.Exec(query, args...)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.RowsAffected()
 }
 
 // GetUser returns the information about a user stored for a given ID
@@ -81,3 +102,27 @@ func CreateUser(request UserCreateRequest) (*UserCreateResponse, error) {
 	return &user, nil
 }
 
+// UpdateUser updates a user in the database, returning an error if it fails
+func UpdateUser(userID int64, request UserUpdateRequest) error {
+	query := "UPDATE Users set Name = $1 WHERE Id = $2"
+	rowsAffected, err := executeQuery(query, request.Name, userID)
+	if err != nil {
+		return err
+	} else if rowsAffected == 0 {
+		return ErrUserNotFound(userID)
+	}
+
+	return nil
+}
+
+// DeleteUser deletes a user in the database, returning an error if it fails or the user doesn't exist
+func DeleteUser(userID int64) error {
+	rowsAffected, err := executeQuery("DELETE FROM Users WHERE Id = $1", userID)
+	if err != nil {
+		return err
+	} else if rowsAffected == 0 {
+		return ErrUserNotFound(userID)
+	}
+
+	return nil
+}

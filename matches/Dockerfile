@@ -14,4 +14,4 @@ RUN go build -o matches
 
 ENTRYPOINT ./matches
 
-EXPOSE 80
+EXPOSE 81
