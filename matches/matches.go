@@ -14,7 +14,7 @@ import (
 
 func main() {
 	r := mux.NewRouter()
-	r.HandleFunc("/match?user={id}", matchListHandler).Methods(http.MethodGet)
+	r.HandleFunc("/matches/{id}", matchListHandler).Methods(http.MethodGet)
 	r.HandleFunc("/match/{id}", matchGetHandler).Methods(http.MethodGet)
 	r.HandleFunc("/match", matchCreateHandler).Methods(http.MethodPost)
 	r.HandleFunc("/match", matchDeleteHandler).Methods(http.MethodDelete)

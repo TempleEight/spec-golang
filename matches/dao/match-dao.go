@@ -106,7 +106,7 @@ func ListMatch(id int64) (*MatchListResponse, error) {
 	}
 
 	var matches MatchListResponse
-	matches.IDs = make([len(rows)]int, 0)
+	matches.IDs = make([]int, 0)
 	for rows.Next() {
 		var match int
 		err = rows.Scan(&match)
