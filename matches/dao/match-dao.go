@@ -25,8 +25,8 @@ type MatchListResponse struct {
 
 // MatchCreateRequest contains the information required to create a new match
 type MatchCreateRequest struct {
-	idOne string `valid:"type(string),required,stringlength(1|255)"`
-	idTwo string `valid:"type(string),required,stringlength(1|255)"`
+	UserOne int
+	UserTwo int
 }
 
 // MatchCreateResponse contains the information stored about the newly created match
@@ -132,7 +132,7 @@ func ListMatch(id int64) (*MatchListResponse, error) {
 
 // CreateMatch inserts a new match into the database given two user IDs
 func CreateMatch(request MatchCreateRequest) (*MatchCreateResponse, error) {
-	row, err := executeQueryWithRowResponse("INSERT INTO Matches (userOne, userTwo, matchedOn) VALUES ($1, $2, NOW()) RETURNING *", request.idOne, request.idTwo)
+	row, err := executeQueryWithRowResponse("INSERT INTO Matches (userOne, userTwo, matchedOn) VALUES ($1, $2, NOW()) RETURNING *", request.UserOne, request.UserTwo)
 	if err != nil {
 		return nil, err
 	}
