@@ -58,13 +58,13 @@ func matchListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userOne, err := strconv.ParseInt(userStr, 10, 64)
+	user, err := strconv.ParseInt(userStr, 10, 64)
 	if err != nil {
 		http.Error(w, CreateErrorJSON("Invalid User ID provided"), http.StatusBadRequest)
 		return
 	}
 
-	matches, err := dao.ListMatch(userOne)
+	matches, err := dao.ListMatch(user)
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrMatchNotFound:
