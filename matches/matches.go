@@ -52,13 +52,13 @@ func matchGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func matchListHandler(w http.ResponseWriter, r *http.Request) {
-	userOneStr := mux.Vars(r)["id"]
-	if len(userOneStr) == 0 {
+	userStr := mux.Vars(r)["id"]
+	if len(userStr) == 0 {
 		http.Error(w, CreateErrorJSON("No match ID provided"), http.StatusBadRequest)
 		return
 	}
 
-	userOne, err := strconv.ParseInt(userOneStr, 10, 64)
+	userOne, err := strconv.ParseInt(userStr, 10, 64)
 	if err != nil {
 		http.Error(w, CreateErrorJSON("Invalid User ID provided"), http.StatusBadRequest)
 		return
