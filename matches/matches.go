@@ -17,7 +17,7 @@ func main() {
 	r.HandleFunc("/matches/{id}", matchListHandler).Methods(http.MethodGet)
 	r.HandleFunc("/match/{id}", matchGetHandler).Methods(http.MethodGet)
 	r.HandleFunc("/match", matchCreateHandler).Methods(http.MethodPost)
-	r.HandleFunc("/match", matchDeleteHandler).Methods(http.MethodDelete)
+	r.HandleFunc("/match/{id}", matchDeleteHandler).Methods(http.MethodDelete)
 	r.HandleFunc("/match", matchUpdateHandler).Methods(http.MethodPatch)
 
 	log.Fatal(http.ListenAndServe(":81", r))
