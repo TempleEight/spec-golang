@@ -54,7 +54,7 @@ func matchGetHandler(w http.ResponseWriter, r *http.Request) {
 func matchListHandler(w http.ResponseWriter, r *http.Request) {
 	userStr := mux.Vars(r)["id"]
 	if len(userStr) == 0 {
-		http.Error(w, CreateErrorJSON("No match ID provided"), http.StatusBadRequest)
+		http.Error(w, CreateErrorJSON("No user ID provided"), http.StatusBadRequest)
 		return
 	}
 
