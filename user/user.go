@@ -2,18 +2,31 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
 
-	"github.com/TempleEight/spec-golang/user/dao"
+	userDAO "github.com/TempleEight/spec-golang/user/dao"
+	"github.com/TempleEight/spec-golang/user/utils"
 	valid "github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
 )
 
+var dao userDAO.DAO
+
 func main() {
+	configPtr := flag.String("config", "/etc/user-service/config.json", "configuration filepath")
+	flag.Parse()
+
 	// Require all struct fields by default
 	valid.SetFieldsRequiredByDefault(true)
+
+	dao = userDAO.DAO{}
+	err := dao.Initialise(*configPtr)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	r := mux.NewRouter()
 	r.HandleFunc("/user", userCreateHandler).Methods(http.MethodPost)
@@ -34,19 +47,19 @@ func jsonMiddleware(next http.Handler) http.Handler {
 }
 
 func userGetHandler(w http.ResponseWriter, r *http.Request) {
-	userID, err := ExtractUserIDFromRequest(mux.Vars(r))
+	userID, err := utils.ExtractUserIDFromRequest(mux.Vars(r))
 	if err != nil {
-		http.Error(w, CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusBadRequest)
 		return
 	}
 
 	user, err := dao.GetUser(userID)
 	if err != nil {
 		switch err.(type) {
-		case dao.ErrUserNotFound:
-			http.Error(w, CreateErrorJSON(err.Error()), http.StatusNotFound)
+		case userDAO.ErrUserNotFound:
+			http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusNotFound)
 		default:
-			errMsg := CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 			http.Error(w, errMsg, http.StatusInternalServerError)
 		}
 		return
@@ -55,24 +68,24 @@ func userGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func userCreateHandler(w http.ResponseWriter, r *http.Request) {
-	var req dao.UserCreateRequest
+	var req userDAO.UserCreateRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		errMsg := CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	_, err = valid.ValidateStruct(req)
 	if err != nil {
-		errMsg := CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	response, err := dao.CreateUser(req)
 	if err != nil {
-		errMsg := CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
@@ -80,23 +93,23 @@ func userCreateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func userUpdateHandler(w http.ResponseWriter, r *http.Request) {
-	userID, err := ExtractUserIDFromRequest(mux.Vars(r))
+	userID, err := utils.ExtractUserIDFromRequest(mux.Vars(r))
 	if err != nil {
-		http.Error(w, CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusBadRequest)
 		return
 	}
 
-	var req dao.UserUpdateRequest
+	var req userDAO.UserUpdateRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		errMsg := CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	_, err = valid.ValidateStruct(req)
 	if err != nil {
-		errMsg := CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
@@ -104,10 +117,10 @@ func userUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	err = dao.UpdateUser(userID, req)
 	if err != nil {
 		switch err.(type) {
-		case dao.ErrUserNotFound:
-			http.Error(w, CreateErrorJSON(err.Error()), http.StatusNotFound)
+		case userDAO.ErrUserNotFound:
+			http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusNotFound)
 		default:
-			errMsg := CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 			http.Error(w, errMsg, http.StatusInternalServerError)
 		}
 		return
@@ -116,19 +129,19 @@ func userUpdateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func userDeleteHandler(w http.ResponseWriter, r *http.Request) {
-	userID, err := ExtractUserIDFromRequest(mux.Vars(r))
+	userID, err := utils.ExtractUserIDFromRequest(mux.Vars(r))
 	if err != nil {
-		http.Error(w, CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusBadRequest)
 		return
 	}
 
 	err = dao.DeleteUser(userID)
 	if err != nil {
 		switch err.(type) {
-		case dao.ErrUserNotFound:
-			http.Error(w, CreateErrorJSON(err.Error()), http.StatusNotFound)
+		case userDAO.ErrUserNotFound:
+			http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusNotFound)
 		default:
-			errMsg := CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 			http.Error(w, errMsg, http.StatusInternalServerError)
 		}
 		return

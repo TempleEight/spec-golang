@@ -3,6 +3,7 @@ FROM golang:1.13.7-alpine
 WORKDIR /go/src/github.com/TempleEight/spec-golang/user/
 
 COPY . .
+COPY config.json /etc/user-service/
 
 RUN apk add --no-cache git
 
