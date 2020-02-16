@@ -22,8 +22,13 @@ func main() {
 	// Require all struct fields by default
 	valid.SetFieldsRequiredByDefault(true)
 
+	config, err := utils.GetConfig(*configPtr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	dao = userDAO.DAO{}
-	err := dao.Initialise(*configPtr)
+	err = dao.Initialise(config)
 	if err != nil {
 		log.Fatal(err)
 	}
