@@ -3,15 +3,17 @@ package dao
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 
+	"github.com/TempleEight/spec-golang/user/utils"
 	// pq acts as the driver for SQL requests
 	_ "github.com/lib/pq"
 )
 
-// TODO: This should come from a configuration file
-// Host matches the container name in docker-compose.yml
-// https://docs.docker.com/compose/networking/
-const connStr = "user=postgres dbname=postgres host=user-db sslmode=disable"
+// DAO encapsulates access to the database
+type DAO struct {
+	DB *sql.DB
+}
 
 // UserGetResponse returns all the information stored about a user
 type UserGetResponse struct {
@@ -35,23 +37,13 @@ type UserUpdateRequest struct {
 	Name string `valid:"type(string),required,stringlength(2|255)"`
 }
 
-func executeQueryWithRowResponse(query string, args ...interface{}) (*sql.Row, error) {
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
+// Executes the query, returning the row
+func executeQueryWithRowResponse(db *sql.DB, query string, args ...interface{}) (*sql.Row, error) {
 	return db.QueryRow(query, args...), nil
 }
 
 // Executes a query, returning the number of rows affected
-func executeQuery(query string, args ...interface{}) (int64, error) {
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		return 0, err
-	}
-	defer db.Close()
-
+func executeQuery(db *sql.DB, query string, args ...interface{}) (int64, error) {
 	result, err := db.Exec(query, args...)
 	if err != nil {
 		return 0, err
@@ -60,9 +52,21 @@ func executeQuery(query string, args ...interface{}) (int64, error) {
 	return result.RowsAffected()
 }
 
+// Initialise opens the database connection
+func (dao *DAO) Initialise(config *utils.Config) error {
+	connStr := fmt.Sprintf("user=%s dbname=%s host=%s sslmode=%s", config.User, config.DBName, config.Host, config.SSLMode)
+	var err error
+	dao.DB, err = sql.Open("postgres", connStr)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // GetUser returns the information about a user stored for a given ID
-func GetUser(id int64) (*UserGetResponse, error) {
-	row, err := executeQueryWithRowResponse("SELECT * FROM Users WHERE id = $1", id)
+func (dao *DAO) GetUser(id int64) (*UserGetResponse, error) {
+	row, err := executeQueryWithRowResponse(dao.DB, "SELECT * FROM Users WHERE id = $1", id)
 	if err != nil {
 		return nil, err
 	}
@@ -82,8 +86,8 @@ func GetUser(id int64) (*UserGetResponse, error) {
 }
 
 // CreateUser creates a new user in the database, returning the newly created user
-func CreateUser(request UserCreateRequest) (*UserCreateResponse, error) {
-	row, err := executeQueryWithRowResponse("INSERT INTO Users (name) VALUES ($1) RETURNING *", request.Name)
+func (dao *DAO) CreateUser(request UserCreateRequest) (*UserCreateResponse, error) {
+	row, err := executeQueryWithRowResponse(dao.DB, "INSERT INTO Users (name) VALUES ($1) RETURNING *", request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -103,9 +107,9 @@ func CreateUser(request UserCreateRequest) (*UserCreateResponse, error) {
 }
 
 // UpdateUser updates a user in the database, returning an error if it fails
-func UpdateUser(userID int64, request UserUpdateRequest) error {
+func (dao *DAO) UpdateUser(userID int64, request UserUpdateRequest) error {
 	query := "UPDATE Users set Name = $1 WHERE Id = $2"
-	rowsAffected, err := executeQuery(query, request.Name, userID)
+	rowsAffected, err := executeQuery(dao.DB, query, request.Name, userID)
 	if err != nil {
 		return err
 	} else if rowsAffected == 0 {
@@ -116,8 +120,8 @@ func UpdateUser(userID int64, request UserUpdateRequest) error {
 }
 
 // DeleteUser deletes a user in the database, returning an error if it fails or the user doesn't exist
-func DeleteUser(userID int64) error {
-	rowsAffected, err := executeQuery("DELETE FROM Users WHERE Id = $1", userID)
+func (dao *DAO) DeleteUser(userID int64) error {
+	rowsAffected, err := executeQuery(dao.DB, "DELETE FROM Users WHERE Id = $1", userID)
 	if err != nil {
 		return err
 	} else if rowsAffected == 0 {

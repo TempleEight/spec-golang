@@ -1,10 +1,27 @@
-package main
+package utils
 
 import (
 	"encoding/json"
 	"errors"
+	"os"
 	"strconv"
 )
+
+// GetConfig returns a configuration object from decoding the given configuration file
+func GetConfig(filePath string) (*Config, error) {
+	config := Config{}
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	decoder := json.NewDecoder(file)
+	err = decoder.Decode(&config)
+	if err != nil {
+		return nil, err
+	}
+	return &config, nil
+}
 
 // CreateErrorJSON returns a JSON string containing the key error associated with provided value
 func CreateErrorJSON(message string) string {
