@@ -16,8 +16,8 @@ type DAO struct {
 
 // MatchCreateRequest contains the information required to create a new match
 type MatchCreateRequest struct {
-	UserOne int `valid:"-"`
-	UserTwo int `valid:"-"`
+	UserOne *int `valid:"-"`
+	UserTwo *int `valid:"-"`
 }
 
 // MatchGetResponse contains the information stored about a given match
@@ -30,8 +30,8 @@ type MatchGetResponse struct {
 
 // MatchUpdateRequest contains the information required to update a match
 type MatchUpdateRequest struct {
-	UserOne int `valid:"-"`
-	UserTwo int `valid:"-"`
+	UserOne *int `valid:"-"`
+	UserTwo *int `valid:"-"`
 }
 
 // MatchListResponse contains the information stored about all matches

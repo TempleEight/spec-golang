@@ -60,6 +60,11 @@ func matchCreateHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
+	if req.UserOne == nil || req.UserTwo == nil {
+		errMsg := utils.CreateErrorJSON("Missing request parameter")
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
 
 	_, err = valid.ValidateStruct(req)
 	if err != nil {
@@ -110,6 +115,11 @@ func matchUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+	if req.UserOne == nil || req.UserTwo == nil {
+		errMsg := utils.CreateErrorJSON("Missing request parameter")
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
