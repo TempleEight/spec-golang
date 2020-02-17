@@ -66,7 +66,7 @@ func (dao *DAO) Initialise(config *utils.Config) error {
 
 // GetUser returns the information about a user stored for a given ID
 func (dao *DAO) GetUser(id int64) (*UserGetResponse, error) {
-	row, err := executeQueryWithRowResponse(dao.DB, "SELECT * FROM Users WHERE id = $1", id)
+	row, err := executeQueryWithRowResponse(dao.DB, "SELECT * FROM UserTbl WHERE id = $1", id)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (dao *DAO) GetUser(id int64) (*UserGetResponse, error) {
 
 // CreateUser creates a new user in the database, returning the newly created user
 func (dao *DAO) CreateUser(request UserCreateRequest) (*UserCreateResponse, error) {
-	row, err := executeQueryWithRowResponse(dao.DB, "INSERT INTO Users (name) VALUES ($1) RETURNING *", request.Name)
+	row, err := executeQueryWithRowResponse(dao.DB, "INSERT INTO UserTbl (name) VALUES ($1) RETURNING *", request.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func (dao *DAO) CreateUser(request UserCreateRequest) (*UserCreateResponse, erro
 
 // UpdateUser updates a user in the database, returning an error if it fails
 func (dao *DAO) UpdateUser(userID int64, request UserUpdateRequest) error {
-	query := "UPDATE Users set Name = $1 WHERE Id = $2"
+	query := "UPDATE UserTbl set Name = $1 WHERE Id = $2"
 	rowsAffected, err := executeQuery(dao.DB, query, request.Name, userID)
 	if err != nil {
 		return err
@@ -121,7 +121,7 @@ func (dao *DAO) UpdateUser(userID int64, request UserUpdateRequest) error {
 
 // DeleteUser deletes a user in the database, returning an error if it fails or the user doesn't exist
 func (dao *DAO) DeleteUser(userID int64) error {
-	rowsAffected, err := executeQuery(dao.DB, "DELETE FROM Users WHERE Id = $1", userID)
+	rowsAffected, err := executeQuery(dao.DB, "DELETE FROM UserTbl WHERE Id = $1", userID)
 	if err != nil {
 		return err
 	} else if rowsAffected == 0 {

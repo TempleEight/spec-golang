@@ -33,17 +33,17 @@ func CreateErrorJSON(message string) string {
 	return string(json)
 }
 
-// ExtractUserIDFromRequest extracts the parameter provided under parameter ID and converts it into an integer
-func ExtractUserIDFromRequest(requestParams map[string]string) (int64, error) {
-	userIDStr := requestParams["id"]
-	if len(userIDStr) == 0 {
-		return 0, errors.New("No user ID provided")
+// ExtractIDFromRequest extracts the parameter provided under parameter ID and converts it into an integer
+func ExtractIDFromRequest(requestParams map[string]string) (int64, error) {
+	idStr := requestParams["id"]
+	if len(idStr) == 0 {
+		return 0, errors.New("No ID provided")
 	}
 
-	userID, err := strconv.ParseInt(userIDStr, 10, 64)
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		return 0, errors.New("Invalid user ID provided")
+		return 0, errors.New("Invalid ID provided")
 	}
 
-	return userID, nil
+	return id, nil
 }

@@ -52,7 +52,7 @@ func jsonMiddleware(next http.Handler) http.Handler {
 }
 
 func userGetHandler(w http.ResponseWriter, r *http.Request) {
-	userID, err := utils.ExtractUserIDFromRequest(mux.Vars(r))
+	userID, err := utils.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
 		http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusBadRequest)
 		return
@@ -98,7 +98,7 @@ func userCreateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func userUpdateHandler(w http.ResponseWriter, r *http.Request) {
-	userID, err := utils.ExtractUserIDFromRequest(mux.Vars(r))
+	userID, err := utils.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
 		http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusBadRequest)
 		return
@@ -134,7 +134,7 @@ func userUpdateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func userDeleteHandler(w http.ResponseWriter, r *http.Request) {
-	userID, err := utils.ExtractUserIDFromRequest(mux.Vars(r))
+	userID, err := utils.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
 		http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusBadRequest)
 		return
