@@ -2,7 +2,6 @@ package dao
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 
 	"github.com/TempleEight/spec-golang/match/utils"
@@ -15,6 +14,12 @@ type DAO struct {
 	DB *sql.DB
 }
 
+// MatchCreateRequest contains the information required to create a new match
+type MatchCreateRequest struct {
+	UserOne int `valid:"-"`
+	UserTwo int `valid:"-"`
+}
+
 // MatchGetResponse contains the information stored about a given match
 type MatchGetResponse struct {
 	ID        int
@@ -23,30 +28,15 @@ type MatchGetResponse struct {
 	MatchedOn string
 }
 
+// MatchUpdateRequest contains the information required to update a match
+type MatchUpdateRequest struct {
+	UserOne int `valid:"-"`
+	UserTwo int `valid:"-"`
+}
+
 // MatchListResponse contains the information stored about all matches
 type MatchListResponse struct {
 	IDs []int
-}
-
-// MatchCreateRequest contains the information required to create a new match
-type MatchCreateRequest struct {
-	UserOne int
-	UserTwo int
-}
-
-// MatchCreateResponse contains the information stored about the newly created match
-type MatchCreateResponse struct {
-	ID        int
-	UserOne   int
-	UserTwo   int
-	MatchedOn string
-}
-
-// MatchUpdateRequest contains the information required to update a match
-type MatchUpdateRequest struct {
-	ID      int
-	UserOne int
-	UserTwo int
 }
 
 // Executes the query, returning the rows
@@ -81,6 +71,12 @@ func (dao *DAO) Initialise(config *utils.Config) error {
 	return nil
 }
 
+// CreateMatch inserts a new match into the database given two user IDs
+func (dao *DAO) CreateMatch(request MatchCreateRequest) error {
+	_, err := executeQuery(dao.DB, "INSERT INTO Match (userOne, userTwo, matchedOn) VALUES ($1, $2, NOW()) RETURNING *", request.UserOne, request.UserTwo)
+	return err
+}
+
 // GetMatch returns the information about a match stored for a given ID
 func (dao *DAO) GetMatch(id int64) (*MatchGetResponse, error) {
 	row, err := executeQueryWithRowResponse(dao.DB, "SELECT * FROM Match WHERE id = $1", id)
@@ -100,6 +96,30 @@ func (dao *DAO) GetMatch(id int64) (*MatchGetResponse, error) {
 	}
 
 	return &match, nil
+}
+
+// UpdateMatch updates an already existing match to two user IDs
+func (dao *DAO) UpdateMatch(matchID int64, request MatchUpdateRequest) error {
+	rowsAffected, err := executeQuery(dao.DB, "UPDATE Match SET userOne = $1, userTwo = $2 WHERE id = $3", request.UserOne, request.UserTwo, matchID)
+	if err != nil {
+		return err
+	} else if rowsAffected == 0 {
+		return ErrMatchNotFound(matchID)
+	}
+
+	return nil
+}
+
+// DeleteMatch deletes a match from the database
+func (dao *DAO) DeleteMatch(id int64) error {
+	rowsAffected, err := executeQuery(dao.DB, "DELETE FROM Match WHERE id = $1", id)
+	if err != nil {
+		return err
+	} else if rowsAffected == 0 {
+		return ErrMatchNotFound(id)
+	}
+
+	return nil
 }
 
 // ListMatch lists all the matches which feature a user
@@ -131,49 +151,4 @@ func (dao *DAO) ListMatch(id int64) (*MatchListResponse, error) {
 	}
 
 	return &matches, nil
-}
-
-// CreateMatch inserts a new match into the database given two user IDs
-func (dao *DAO) CreateMatch(request MatchCreateRequest) (*MatchCreateResponse, error) {
-	row, err := executeQueryWithRowResponse(dao.DB, "INSERT INTO Match (userOne, userTwo, matchedOn) VALUES ($1, $2, NOW()) RETURNING *", request.UserOne, request.UserTwo)
-	if err != nil {
-		return nil, err
-	}
-
-	var match MatchCreateResponse
-	err = row.Scan(&match.ID, &match.UserOne, &match.UserTwo, &match.MatchedOn)
-	if err != nil {
-		switch err {
-		case sql.ErrNoRows:
-			return nil, errors.New("Could not create match")
-		default:
-			return nil, err
-		}
-	}
-
-	return &match, nil
-}
-
-// UpdateMatch updates an already existing match to two user IDs
-func (dao *DAO) UpdateMatch(request MatchUpdateRequest) error {
-	rowsAffected, err := executeQuery(dao.DB, "UPDATE Match SET userOne = $1, userTwo = $2 WHERE id = $3", request.UserOne, request.UserTwo, request.ID)
-	if err != nil {
-		return err
-	} else if rowsAffected == 0 {
-		return ErrMatchNotFound(request.ID)
-	}
-
-	return nil
-}
-
-// DeleteMatch deletes a match from the database
-func (dao *DAO) DeleteMatch(id int64) error {
-	rowsAffected, err := executeQuery(dao.DB, "DELETE FROM Match WHERE id = $1", id)
-	if err != nil {
-		return err
-	} else if rowsAffected == 0 {
-		return ErrMatchNotFound(id)
-	}
-
-	return nil
 }
