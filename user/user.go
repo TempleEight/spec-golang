@@ -51,6 +51,31 @@ func jsonMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func userCreateHandler(w http.ResponseWriter, r *http.Request) {
+	var req userDAO.UserCreateRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	_, err = valid.ValidateStruct(req)
+	if err != nil {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	err = dao.CreateUser(req)
+	if err != nil {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(struct{}{})
+}
+
 func userGetHandler(w http.ResponseWriter, r *http.Request) {
 	userID, err := utils.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
@@ -70,31 +95,6 @@ func userGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(user)
-}
-
-func userCreateHandler(w http.ResponseWriter, r *http.Request) {
-	var req userDAO.UserCreateRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
-		return
-	}
-
-	_, err = valid.ValidateStruct(req)
-	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
-		return
-	}
-
-	response, err := dao.CreateUser(req)
-	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
-		return
-	}
-	json.NewEncoder(w).Encode(response)
 }
 
 func userUpdateHandler(w http.ResponseWriter, r *http.Request) {

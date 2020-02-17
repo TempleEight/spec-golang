@@ -2,7 +2,6 @@ package dao
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 
 	"github.com/TempleEight/spec-golang/user/utils"
@@ -15,19 +14,13 @@ type DAO struct {
 	DB *sql.DB
 }
 
-// UserGetResponse returns all the information stored about a user
-type UserGetResponse struct {
-	ID   int
-	Name string
-}
-
 // UserCreateRequest contains the information required to create a new user
 type UserCreateRequest struct {
 	Name string `valid:"type(string),required,stringlength(2|255)"`
 }
 
-// UserCreateResponse contains the information stored about the newly created user
-type UserCreateResponse struct {
+// UserGetResponse returns all the information stored about a user
+type UserGetResponse struct {
 	ID   int
 	Name string
 }
@@ -64,6 +57,12 @@ func (dao *DAO) Initialise(config *utils.Config) error {
 	return nil
 }
 
+// CreateUser creates a new user in the database
+func (dao *DAO) CreateUser(request UserCreateRequest) error {
+	_, err := executeQuery(dao.DB, "INSERT INTO User_Temple (name) VALUES ($1) RETURNING *", request.Name)
+	return err
+}
+
 // GetUser returns the information about a user stored for a given ID
 func (dao *DAO) GetUser(id int64) (*UserGetResponse, error) {
 	row, err := executeQueryWithRowResponse(dao.DB, "SELECT * FROM User_Temple WHERE id = $1", id)
@@ -85,31 +84,9 @@ func (dao *DAO) GetUser(id int64) (*UserGetResponse, error) {
 	return &user, nil
 }
 
-// CreateUser creates a new user in the database, returning the newly created user
-func (dao *DAO) CreateUser(request UserCreateRequest) (*UserCreateResponse, error) {
-	row, err := executeQueryWithRowResponse(dao.DB, "INSERT INTO User_Temple (name) VALUES ($1) RETURNING *", request.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	var user UserCreateResponse
-	err = row.Scan(&user.ID, &user.Name)
-	if err != nil {
-		switch err {
-		case sql.ErrNoRows:
-			return nil, errors.New("Could not create user")
-		default:
-			return nil, err
-		}
-	}
-
-	return &user, nil
-}
-
 // UpdateUser updates a user in the database, returning an error if it fails
 func (dao *DAO) UpdateUser(userID int64, request UserUpdateRequest) error {
-	query := "UPDATE User_Temple set Name = $1 WHERE Id = $2"
-	rowsAffected, err := executeQuery(dao.DB, query, request.Name, userID)
+	rowsAffected, err := executeQuery(dao.DB, "UPDATE User_Temple set Name = $1 WHERE Id = $2", request.Name, userID)
 	if err != nil {
 		return err
 	} else if rowsAffected == 0 {
