@@ -61,7 +61,7 @@ func matchCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.UserOne == nil || req.UserTwo == nil {
-		errMsg := utils.CreateErrorJSON("Missing request parameter")
+		errMsg := utils.CreateErrorJSON("Missing request parameter(s)")
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
