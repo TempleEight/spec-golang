@@ -3,12 +3,17 @@ package dao
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 
+	"github.com/TempleEight/spec-golang/match/utils"
 	// pq acts as the driver for SQL requests
 	_ "github.com/lib/pq"
 )
 
-const connStr = "user=postgres dbname=postgres host=matches-db sslmode=disable"
+// DAO encapsulates access to the database
+type DAO struct {
+	DB *sql.DB
+}
 
 // MatchGetResponse contains the information stored about a given match
 type MatchGetResponse struct {
@@ -44,32 +49,18 @@ type MatchUpdateRequest struct {
 	UserTwo int
 }
 
-func executeQueryWithResponses(query string, args ...interface{}) (*sql.Rows, error) {
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
-	rows, err := db.Query(query, args...)
-	return rows, err
+// Executes the query, returning the rows
+func executeQueryWithResponses(db *sql.DB, query string, args ...interface{}) (*sql.Rows, error) {
+	return db.Query(query, args...)
 }
 
-func executeQueryWithRowResponse(query string, args ...interface{}) (*sql.Row, error) {
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
+// Executes the query, returning the row
+func executeQueryWithRowResponse(db *sql.DB, query string, args ...interface{}) (*sql.Row, error) {
 	return db.QueryRow(query, args...), nil
 }
 
-func executeQuery(query string, args ...interface{}) (int64, error) {
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		return 0, err
-	}
-	defer db.Close()
-
+// Executes a query, returning the number of rows affected
+func executeQuery(db *sql.DB, query string, args ...interface{}) (int64, error) {
 	result, err := db.Exec(query, args...)
 	if err != nil {
 		return 0, err
@@ -78,9 +69,21 @@ func executeQuery(query string, args ...interface{}) (int64, error) {
 	return result.RowsAffected()
 }
 
+// Initialise opens the database connection
+func (dao *DAO) Initialise(config *utils.Config) error {
+	connStr := fmt.Sprintf("user=%s dbname=%s host=%s sslmode=%s", config.User, config.DBName, config.Host, config.SSLMode)
+	var err error
+	dao.DB, err = sql.Open("postgres", connStr)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // GetMatch returns the information about a match stored for a given ID
-func GetMatch(id int64) (*MatchGetResponse, error) {
-	row, err := executeQueryWithRowResponse("SELECT * FROM Matches WHERE id = $1", id)
+func (dao *DAO) GetMatch(id int64) (*MatchGetResponse, error) {
+	row, err := executeQueryWithRowResponse(dao.DB, "SELECT * FROM Match WHERE id = $1", id)
 	if err != nil {
 		return nil, err
 	}
@@ -100,8 +103,8 @@ func GetMatch(id int64) (*MatchGetResponse, error) {
 }
 
 // ListMatch lists all the matches which feature a user
-func ListMatch(id int64) (*MatchListResponse, error) {
-	rows, err := executeQueryWithResponses("SELECT id FROM Matches WHERE userOne = $1 OR userTwo = $1", id)
+func (dao *DAO) ListMatch(id int64) (*MatchListResponse, error) {
+	rows, err := executeQueryWithResponses(dao.DB, "SELECT id FROM Match WHERE userOne = $1 OR userTwo = $1", id)
 	if err != nil {
 		return nil, err
 	}
@@ -131,8 +134,8 @@ func ListMatch(id int64) (*MatchListResponse, error) {
 }
 
 // CreateMatch inserts a new match into the database given two user IDs
-func CreateMatch(request MatchCreateRequest) (*MatchCreateResponse, error) {
-	row, err := executeQueryWithRowResponse("INSERT INTO Matches (userOne, userTwo, matchedOn) VALUES ($1, $2, NOW()) RETURNING *", request.UserOne, request.UserTwo)
+func (dao *DAO) CreateMatch(request MatchCreateRequest) (*MatchCreateResponse, error) {
+	row, err := executeQueryWithRowResponse(dao.DB, "INSERT INTO Match (userOne, userTwo, matchedOn) VALUES ($1, $2, NOW()) RETURNING *", request.UserOne, request.UserTwo)
 	if err != nil {
 		return nil, err
 	}
@@ -152,8 +155,8 @@ func CreateMatch(request MatchCreateRequest) (*MatchCreateResponse, error) {
 }
 
 // UpdateMatch updates an already existing match to two user IDs
-func UpdateMatch(request MatchUpdateRequest) error {
-	rowsAffected, err := executeQuery("UPDATE Matches SET userOne = $1, userTwo = $2 WHERE id = $3", request.UserOne, request.UserTwo, request.ID)
+func (dao *DAO) UpdateMatch(request MatchUpdateRequest) error {
+	rowsAffected, err := executeQuery(dao.DB, "UPDATE Match SET userOne = $1, userTwo = $2 WHERE id = $3", request.UserOne, request.UserTwo, request.ID)
 	if err != nil {
 		return err
 	} else if rowsAffected == 0 {
@@ -164,8 +167,8 @@ func UpdateMatch(request MatchUpdateRequest) error {
 }
 
 // DeleteMatch deletes a match from the database
-func DeleteMatch(id int64) error {
-	rowsAffected, err := executeQuery("DELETE FROM Matches WHERE id = $1", id)
+func (dao *DAO) DeleteMatch(id int64) error {
+	rowsAffected, err := executeQuery(dao.DB, "DELETE FROM Match WHERE id = $1", id)
 	if err != nil {
 		return err
 	} else if rowsAffected == 0 {

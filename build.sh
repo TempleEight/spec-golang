@@ -1,5 +1,3 @@
 #!/bin/bash
 
-docker-compose build
-docker-compose up
-sh kong/configure-kong.sh
+docker ps -a -q | xargs docker rm -f && docker volume prune -f && docker-compose up --build

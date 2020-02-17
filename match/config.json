@@ -1,0 +1,6 @@
+{
+  "user": "postgres",
+  "dbName": "postgres",
+  "host": "match-db",
+  "sslMode": "disable"
+}

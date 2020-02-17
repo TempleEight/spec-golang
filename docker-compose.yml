@@ -18,22 +18,22 @@ services:
     networks: 
       - user-network 
 
-  matches:
-    build: ./matches
+  match:
+    build: ./match
     ports:
       - "81:81" 
     networks: 
-      - matches-network 
+      - match-network
       - kong-network
     
-  matches-db:
+  match-db:
     image: postgres:12.1 
     environment:
       - PGUSER=postgres
     volumes:
-      - ./matches-db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./match-db/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks: 
-      - matches-network 
+      - match-network
 
   # API Gateway
   kong-migrations:
@@ -101,5 +101,5 @@ services:
 
 networks:
   user-network:
-  matches-network:
+  match-network:
   kong-network:
