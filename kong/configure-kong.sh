@@ -12,13 +12,7 @@ curl -i -X POST \
   --data 'name=match-service' \
   --data 'url=http://match:81/match'
 
-# Add the matches service
-curl -i -X POST \
-  --url http://localhost:8001/services/ \
-  --data 'name=matches-service' \
-  --data 'url=http://match:81/matches'
-
-# Add a route for users
+# Add a route for user
 curl -i -X POST \
   --url http://localhost:8001/services/user-service/routes \
   --data 'hosts[]=localhost:8000' \
@@ -29,9 +23,3 @@ curl -i -X POST \
   --url http://localhost:8001/services/match-service/routes \
   --data 'hosts[]=localhost:8000' \
   --data 'paths[]=/api/match'
-
-# Add a route for matches
-curl -i -X POST \
-  --url http://localhost:8001/services/matches-service/routes \
-  --data 'hosts[]=localhost:8000' \
-  --data 'paths[]=/api/matches'

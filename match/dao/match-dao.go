@@ -36,7 +36,7 @@ type MatchUpdateRequest struct {
 
 // MatchListResponse contains the information stored about all matches
 type MatchListResponse struct {
-	IDs []int
+	MatchList []MatchGetResponse
 }
 
 // Executes the query, returning the rows
@@ -122,27 +122,22 @@ func (dao *DAO) DeleteMatch(id int64) error {
 	return nil
 }
 
-// ListMatch lists all the matches which feature a user
-func (dao *DAO) ListMatch(id int64) (*MatchListResponse, error) {
-	rows, err := executeQueryWithResponses(dao.DB, "SELECT id FROM Match WHERE userOne = $1 OR userTwo = $1", id)
+// ListMatch returns a list containing every match
+func (dao *DAO) ListMatch() (*MatchListResponse, error) {
+	rows, err := executeQueryWithResponses(dao.DB, "SELECT * FROM Match")
 	if err != nil {
 		return nil, err
 	}
 
-	var matches MatchListResponse
-	matches.IDs = make([]int, 0)
+	var matchList MatchListResponse
+	matchList.MatchList = make([]MatchGetResponse, 0)
 	for rows.Next() {
-		var match int
-		err = rows.Scan(&match)
+		var match MatchGetResponse
+		err = rows.Scan(&match.ID, &match.UserOne, &match.UserTwo, &match.MatchedOn)
 		if err != nil {
-			switch err {
-			case sql.ErrNoRows:
-				return nil, ErrMatchNotFound(id)
-			default:
-				return nil, err
-			}
+			return nil, err
 		}
-		matches.IDs = append(matches.IDs, match)
+		matchList.MatchList = append(matchList.MatchList, match)
 	}
 
 	err = rows.Err()
@@ -150,5 +145,5 @@ func (dao *DAO) ListMatch(id int64) (*MatchListResponse, error) {
 		return nil, err
 	}
 
-	return &matches, nil
+	return &matchList, nil
 }
