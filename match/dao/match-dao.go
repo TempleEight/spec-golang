@@ -73,7 +73,7 @@ func (dao *DAO) Initialise(config *utils.Config) error {
 
 // CreateMatch inserts a new match into the database given two user IDs
 func (dao *DAO) CreateMatch(request MatchCreateRequest) error {
-	_, err := executeQuery(dao.DB, "INSERT INTO Match (userOne, userTwo, matchedOn) VALUES ($1, $2, NOW()) RETURNING *", request.UserOne, request.UserTwo)
+	_, err := executeQuery(dao.DB, "INSERT INTO Match (userOne, userTwo, matchedOn) VALUES ($1, $2, NOW())", request.UserOne, request.UserTwo)
 	return err
 }
 
@@ -100,7 +100,7 @@ func (dao *DAO) GetMatch(id int64) (*MatchGetResponse, error) {
 
 // UpdateMatch updates an already existing match to two user IDs
 func (dao *DAO) UpdateMatch(matchID int64, request MatchUpdateRequest) error {
-	rowsAffected, err := executeQuery(dao.DB, "UPDATE Match SET userOne = $1, userTwo = $2 WHERE id = $3", request.UserOne, request.UserTwo, matchID)
+	rowsAffected, err := executeQuery(dao.DB, "UPDATE Match SET userOne = $1, userTwo = $2, matchedOn = NOW() WHERE id = $3", request.UserOne, request.UserTwo, matchID)
 	if err != nil {
 		return err
 	} else if rowsAffected == 0 {
