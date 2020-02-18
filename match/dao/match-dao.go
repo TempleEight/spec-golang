@@ -122,7 +122,7 @@ func (dao *DAO) DeleteMatch(id int64) error {
 	return nil
 }
 
-// ListMatch lists all matches
+// ListMatch returns a list containing every match
 func (dao *DAO) ListMatch() (*MatchListResponse, error) {
 	rows, err := executeQueryWithResponses(dao.DB, "SELECT * FROM Match")
 	if err != nil {
