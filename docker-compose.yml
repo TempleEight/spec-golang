@@ -37,7 +37,7 @@ services:
 
   # API Gateway
   kong-migrations:
-    image: kong:latest 
+    image: kong:2.0.1
     command: kong migrations bootstrap && kong migrations up && kong migrations finish
     depends_on:
       - kong-db

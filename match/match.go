@@ -34,10 +34,10 @@ func main() {
 	}
 
 	r := mux.NewRouter()
-	r.HandleFunc("/match/{id}", matchGetHandler).Methods(http.MethodGet)
 	r.HandleFunc("/match", matchCreateHandler).Methods(http.MethodPost)
+	r.HandleFunc("/match/{id}", matchGetHandler).Methods(http.MethodGet)
 	r.HandleFunc("/match/{id}", matchDeleteHandler).Methods(http.MethodDelete)
-	r.HandleFunc("/match", matchUpdateHandler).Methods(http.MethodPatch)
+	r.HandleFunc("/match/{id}", matchUpdateHandler).Methods(http.MethodPut)
 	r.HandleFunc("/matches/{id}", matchListHandler).Methods(http.MethodGet)
 	r.Use(jsonMiddleware)
 
@@ -50,6 +50,36 @@ func jsonMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		next.ServeHTTP(w, r)
 	})
+}
+
+func matchCreateHandler(w http.ResponseWriter, r *http.Request) {
+	var req matchDAO.MatchCreateRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+	if req.UserOne == nil || req.UserTwo == nil {
+		errMsg := utils.CreateErrorJSON("Missing request parameter(s)")
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	_, err = valid.ValidateStruct(req)
+	if err != nil {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	err = dao.CreateMatch(req)
+	if err != nil {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(struct{}{})
 }
 
 func matchGetHandler(w http.ResponseWriter, r *http.Request) {
@@ -74,14 +104,34 @@ func matchGetHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(match)
 }
 
-func matchListHandler(w http.ResponseWriter, r *http.Request) {
-	userID, err := utils.ExtractIDFromRequest(mux.Vars(r))
+func matchUpdateHandler(w http.ResponseWriter, r *http.Request) {
+	matchID, err := utils.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
 		http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusBadRequest)
 		return
 	}
 
-	matches, err := dao.ListMatch(userID)
+	var req matchDAO.MatchUpdateRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+	if req.UserOne == nil || req.UserTwo == nil {
+		errMsg := utils.CreateErrorJSON("Missing request parameter")
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	_, err = valid.ValidateStruct(req)
+	if err != nil {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	err = dao.UpdateMatch(matchID, req)
 	if err != nil {
 		switch err.(type) {
 		case matchDAO.ErrMatchNotFound:
@@ -92,26 +142,7 @@ func matchListHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
-	json.NewEncoder(w).Encode(matches)
-}
-
-func matchCreateHandler(w http.ResponseWriter, r *http.Request) {
-	var req matchDAO.MatchCreateRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
-		return
-	}
-
-	response, err := dao.CreateMatch(req)
-	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
-		return
-	}
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(struct{}{})
 }
 
 func matchDeleteHandler(w http.ResponseWriter, r *http.Request) {
@@ -135,16 +166,14 @@ func matchDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(struct{}{})
 }
 
-func matchUpdateHandler(w http.ResponseWriter, r *http.Request) {
-	var req matchDAO.MatchUpdateRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
+func matchListHandler(w http.ResponseWriter, r *http.Request) {
+	userID, err := utils.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusBadRequest)
 		return
 	}
 
-	err = dao.UpdateMatch(req)
+	matches, err := dao.ListMatch(userID)
 	if err != nil {
 		switch err.(type) {
 		case matchDAO.ErrMatchNotFound:
@@ -155,5 +184,6 @@ func matchUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	json.NewEncoder(w).Encode(struct{}{})
+
+	json.NewEncoder(w).Encode(matches)
 }
