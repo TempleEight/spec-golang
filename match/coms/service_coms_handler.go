@@ -1,8 +1,8 @@
 package coms
 
 import (
-	"github.com/TempleEight/spec-golang/match/utils"
 	"fmt"
+	"github.com/TempleEight/spec-golang/match/utils"
 	"net/http"
 )
 
@@ -11,8 +11,8 @@ type Handler struct {
 	Services map[string]string
 }
 
-// Initialise sets up the Handler object with a list of services from the config
-func (coms *Handler) Initialise(config *utils.Config) {
+// Init sets up the Handler object with a list of services from the config
+func (coms *Handler) Init(config *utils.Config) {
 	coms.Services = config.Services
 }
 

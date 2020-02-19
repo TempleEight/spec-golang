@@ -32,7 +32,7 @@ func main() {
 	dao = matchDAO.DAO{}
 	err = dao.Initialise(config)
 	coms = matchComs.Handler{}
-	coms.Initialise(config)
+	coms.Init(config)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -94,8 +94,14 @@ func matchCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !userOneValid || !userTwoValid {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unknown Users: %d | %d", userOne, userTwo))
+	if !userOneValid {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unknown Users: %d", userOne))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	if !userTwoValid {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unknown Users: %d", userOne))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}

@@ -45,7 +45,7 @@ func executeQuery(db *sql.DB, query string, args ...interface{}) (int64, error) 
 	return result.RowsAffected()
 }
 
-// Initialise opens the database connection
+// Init opens the database connection
 func (dao *DAO) Initialise(config *utils.Config) error {
 	connStr := fmt.Sprintf("user=%s dbname=%s host=%s sslmode=%s", config.User, config.DBName, config.Host, config.SSLMode)
 	var err error
