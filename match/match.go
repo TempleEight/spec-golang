@@ -95,13 +95,13 @@ func matchCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !userOneValid {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unknown Users: %d", userOne))
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unknown User: %d", userOne))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	if !userTwoValid {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unknown Users: %d", userOne))
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unknown User: %d", userTwo))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
