@@ -30,7 +30,7 @@ func main() {
 	}
 
 	dao = matchDAO.DAO{}
-	err = dao.Initialise(config)
+	err = dao.Init(config)
 	coms = matchComs.Handler{}
 	coms.Init(config)
 	if err != nil {
