@@ -2,5 +2,8 @@
   "user": "postgres",
   "dbName": "postgres",
   "host": "match-db",
-  "sslMode": "disable"
+  "sslMode": "disable",
+  "services": {
+    "user": "http://user:80/user"
+  }
 }
