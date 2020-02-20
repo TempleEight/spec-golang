@@ -81,13 +81,14 @@ func matchCreateHandler(w http.ResponseWriter, r *http.Request) {
 	userOne := *req.UserOne
 	userTwo := *req.UserTwo
 
-	userOneValid, err := coms.CheckUser("user", userOne)
+	userOneValid, err := coms.CheckUser(userOne)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "matches", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
-	userTwoValid, err := coms.CheckUser("user", userTwo)
+
+	userTwoValid, err := coms.CheckUser(userTwo)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "matches", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
