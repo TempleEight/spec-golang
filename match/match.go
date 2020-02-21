@@ -79,31 +79,28 @@ func matchCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userOne := *req.UserOne
-	userTwo := *req.UserTwo
-
-	userOneValid, err := coms.CheckUser(userOne)
+	userOneValid, err := coms.CheckUser(*req.UserOne)
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "matches", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
-		return
-	}
-
-	userTwoValid, err := coms.CheckUser(userTwo)
-	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "matches", err.Error()))
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	if !userOneValid {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unknown User: %d", userOne))
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unknown User: %d", *req.UserOne))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	userTwoValid, err := coms.CheckUser(*req.UserTwo)
+	if err != nil {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	if !userTwoValid {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unknown User: %d", userTwo))
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unknown User: %d", *req.UserTwo))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}

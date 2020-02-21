@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-// Handler maintaints the list of services and their associated hostnames
+// Handler maintains the list of services and their associated hostnames
 type Handler struct {
 	Services map[string]string
 }
