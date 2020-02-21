@@ -38,11 +38,12 @@ func main() {
 	}
 
 	r := mux.NewRouter()
+	// Mux redirects to first matching route, i.e. the order matters
+	r.HandleFunc("/match/all", matchListHandler).Methods(http.MethodGet)
 	r.HandleFunc("/match", matchCreateHandler).Methods(http.MethodPost)
 	r.HandleFunc("/match/{id}", matchGetHandler).Methods(http.MethodGet)
 	r.HandleFunc("/match/{id}", matchDeleteHandler).Methods(http.MethodDelete)
 	r.HandleFunc("/match/{id}", matchUpdateHandler).Methods(http.MethodPut)
-	r.HandleFunc("/matches/{id}", matchListHandler).Methods(http.MethodGet)
 	r.Use(jsonMiddleware)
 
 	log.Fatal(http.ListenAndServe(":81", r))
@@ -201,23 +202,12 @@ func matchDeleteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func matchListHandler(w http.ResponseWriter, r *http.Request) {
-	userID, err := utils.ExtractIDFromRequest(mux.Vars(r))
+	matchList, err := dao.ListMatch()
 	if err != nil {
-		http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
-	matches, err := dao.ListMatch(userID)
-	if err != nil {
-		switch err.(type) {
-		case matchDAO.ErrMatchNotFound:
-			http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusNotFound)
-		default:
-			errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-			http.Error(w, errMsg, http.StatusInternalServerError)
-		}
-		return
-	}
-
-	json.NewEncoder(w).Encode(matches)
+	json.NewEncoder(w).Encode(matchList)
 }
