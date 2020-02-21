@@ -13,4 +13,3 @@ RUN go build -o user
 ENTRYPOINT ./user
 
 EXPOSE 80
-
