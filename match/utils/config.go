@@ -5,4 +5,5 @@ type Config struct {
 	DBName  string `json:"dbName"`
 	Host    string `json:"host"`
 	SSLMode string `json:"sslMode"`
+	Services map[string]string `json:"services"`
 }

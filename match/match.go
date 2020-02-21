@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 
+	matchComm "github.com/TempleEight/spec-golang/match/comm"
 	matchDAO "github.com/TempleEight/spec-golang/match/dao"
 	"github.com/TempleEight/spec-golang/match/utils"
 	valid "github.com/asaskevich/govalidator"
@@ -14,6 +15,7 @@ import (
 )
 
 var dao matchDAO.DAO
+var comm matchComm.Handler
 
 func main() {
 	configPtr := flag.String("config", "/etc/match-service/config.json", "configuration filepath")
@@ -28,7 +30,9 @@ func main() {
 	}
 
 	dao = matchDAO.DAO{}
-	err = dao.Initialise(config)
+	err = dao.Init(config)
+	comm = matchComm.Handler{}
+	comm.Init(config)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -61,6 +65,7 @@ func matchCreateHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
+
 	if req.UserOne == nil || req.UserTwo == nil {
 		errMsg := utils.CreateErrorJSON("Missing request parameter(s)")
 		http.Error(w, errMsg, http.StatusBadRequest)
@@ -70,6 +75,32 @@ func matchCreateHandler(w http.ResponseWriter, r *http.Request) {
 	_, err = valid.ValidateStruct(req)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	userOneValid, err := comm.CheckUser(*req.UserOne)
+	if err != nil {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	if !userOneValid {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unknown User: %d", *req.UserOne))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	userTwoValid, err := comm.CheckUser(*req.UserTwo)
+	if err != nil {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	if !userTwoValid {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unknown User: %d", *req.UserTwo))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}

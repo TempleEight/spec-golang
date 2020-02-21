@@ -28,7 +28,7 @@ func main() {
 	}
 
 	dao = userDAO.DAO{}
-	err = dao.Initialise(config)
+	err = dao.Init(config)
 	if err != nil {
 		log.Fatal(err)
 	}
