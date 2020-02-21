@@ -1,4 +1,4 @@
-package coms
+package comm
 
 import (
 	"fmt"

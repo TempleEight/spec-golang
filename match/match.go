@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 
-	matchComs "github.com/TempleEight/spec-golang/match/coms"
+	matchComm "github.com/TempleEight/spec-golang/match/comm"
 	matchDAO "github.com/TempleEight/spec-golang/match/dao"
 	"github.com/TempleEight/spec-golang/match/utils"
 	valid "github.com/asaskevich/govalidator"
@@ -15,7 +15,7 @@ import (
 )
 
 var dao matchDAO.DAO
-var coms matchComs.Handler
+var comm matchComm.Handler
 
 func main() {
 	configPtr := flag.String("config", "/etc/match-service/config.json", "configuration filepath")
@@ -31,8 +31,8 @@ func main() {
 
 	dao = matchDAO.DAO{}
 	err = dao.Init(config)
-	coms = matchComs.Handler{}
-	coms.Init(config)
+	comm = matchComm.Handler{}
+	comm.Init(config)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -79,7 +79,7 @@ func matchCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userOneValid, err := coms.CheckUser(*req.UserOne)
+	userOneValid, err := comm.CheckUser(*req.UserOne)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
@@ -92,7 +92,7 @@ func matchCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userTwoValid, err := coms.CheckUser(*req.UserTwo)
+	userTwoValid, err := comm.CheckUser(*req.UserTwo)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
