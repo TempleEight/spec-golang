@@ -31,11 +31,12 @@ func main() {
 
 	dao = matchDAO.DAO{}
 	err = dao.Init(config)
-	comm = matchComm.Handler{}
-	comm.Init(config)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	comm = matchComm.Handler{}
+	comm.Init(config)
 
 	r := mux.NewRouter()
 	// Mux redirects to first matching route, i.e. the order matters
