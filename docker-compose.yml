@@ -35,6 +35,23 @@ services:
     networks: 
       - match-network
 
+  auth:
+    build: ./auth
+    ports:
+      - "82:82"
+    networks:
+      - auth-network
+      - kong-network
+
+  auth-db:
+    image: postgres:12.1
+    environment:
+      - PGUSER=postgres
+    volumes:
+      - ./auth-db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - auth-network
+
   # API Gateway
   kong-migrations:
     image: kong:2.0.1
@@ -102,4 +119,5 @@ services:
 networks:
   user-network:
   match-network:
+  auth-network:
   kong-network:
