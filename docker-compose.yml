@@ -37,6 +37,8 @@ services:
 
   auth:
     build: ./auth
+    depends_on:
+      - kong
     ports:
       - "82:82"
     networks:

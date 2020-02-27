@@ -36,3 +36,10 @@ curl -i -X POST \
   --data 'hosts[]=localhost:8000' \
   --data 'paths[]=/api/auth'
 
+# Require a JWT for the user service
+curl -X POST http://localhost:8001/services/user-service/plugins \
+    --data "name=jwt"
+
+# Require a JWT for the match service
+curl -X POST http://localhost:8001/services/match-service/plugins \
+    --data "name=jwt"
