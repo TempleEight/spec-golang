@@ -38,11 +38,12 @@ func main() {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/auth", authCreateHandler).Methods(http.MethodPost)
+	r.HandleFunc("/auth", authGetHandler).Methods(http.MethodGet)
 	log.Fatal(http.ListenAndServe(":82", r))
 }
 
 func authCreateHandler(w http.ResponseWriter, r *http.Request) {
-	var req authDAO.AuthCreateRequest
+	var req authDAO.PlaintextAuth
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
@@ -65,8 +66,11 @@ func authCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req.Password = string(hashedPassword)
-	err = dao.CreateAuth(req)
+	hashedAuth := authDAO.HashedAuth{
+		Email:    req.Email,
+		Password: string(hashedPassword),
+	}
+	err = dao.CreateAuth(hashedAuth)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
@@ -80,7 +84,56 @@ func authCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := authDAO.AuthCreateResponse{
+	response := authDAO.AuthResponse{
+		AccessToken: accessToken,
+	}
+	json.NewEncoder(w).Encode(response)
+}
+
+func authGetHandler(w http.ResponseWriter, r *http.Request) {
+	var req authDAO.PlaintextAuth
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	_, err = valid.ValidateStruct(req)
+	if err != nil {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	auth, err := dao.GetAuth(req)
+	if err != nil {
+		switch err {
+		case authDAO.ErrAuthNotFound:
+			errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid email or password"))
+			http.Error(w, errMsg, http.StatusUnauthorized)
+		default:
+			errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			http.Error(w, errMsg, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(auth.Password), []byte(req.Password))
+	if err != nil {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid email or password"))
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
+	accessToken, err := createToken(req.Email, "TODO", "TODO")
+	if err != nil {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Could not create access token: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+
+	response := authDAO.AuthResponse{
 		AccessToken: accessToken,
 	}
 	json.NewEncoder(w).Encode(response)

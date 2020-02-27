@@ -14,16 +14,24 @@ type DAO struct {
 	DB *sql.DB
 }
 
-// AuthCreateRequest contains the information required to create a new authorized user
-type AuthCreateRequest struct {
+// PlaintextAuth contains the information retrieved from an end user
+type PlaintextAuth struct {
 	Email    string `valid:"email,required"`
 	Password string `valid:"type(string),required,stringlength(8|64)"`
 }
 
-type AuthCreateResponse struct {
+// HashedAuth contains the information required to create a new authorized user, with the password hashed and salted
+type HashedAuth struct {
+	Email    string `valid:"email,required"`
+	Password string `valid:"type(string),required,stringlength(8|64)"`
+}
+
+// AuthResponse contains an access token
+type AuthResponse struct {
 	AccessToken string
 }
 
+// Init constructs a DAO from a configuration file
 func (dao *DAO) Init(config *utils.Config) error {
 	connStr := fmt.Sprintf("user=%s dbname=%s host=%s sslmode=%s", config.User, config.DBName, config.Host, config.SSLMode)
 	var err error
@@ -45,7 +53,29 @@ func executeQuery(db *sql.DB, query string, args ...interface{}) (int64, error) 
 	return result.RowsAffected()
 }
 
-func (dao *DAO) CreateAuth(request AuthCreateRequest) error {
+func executeQueryWithRowResponse(db *sql.DB, query string, args ...interface{}) (*sql.Row, error) {
+	return db.QueryRow(query, args...), nil
+}
+
+// CreateAuth persists a new auth'd user to the data store
+func (dao *DAO) CreateAuth(request HashedAuth) error {
 	_, err := executeQuery(dao.DB, "INSERT INTO auth (email, password) VALUES ($1, $2)", request.Email, request.Password)
 	return err
+}
+
+// GetAuth attempts to find an existing auth'd user in the data store
+func (dao *DAO) GetAuth(request PlaintextAuth) (*HashedAuth, error) {
+	row, err := executeQueryWithRowResponse(dao.DB, "SELECT email, password FROM auth WHERE email = $1", request.Email)
+	var auth HashedAuth
+	err = row.Scan(&auth.Email, &auth.Password)
+	if err != nil {
+		switch err {
+		case sql.ErrNoRows:
+			return nil, ErrAuthNotFound
+		default:
+			return nil, err
+		}
+	}
+
+	return &auth, nil
 }
