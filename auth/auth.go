@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	authComm "github.com/TempleEight/spec-golang/auth/comm"
 	authDAO "github.com/TempleEight/spec-golang/auth/dao"
 	"github.com/TempleEight/spec-golang/auth/utils"
 	valid "github.com/asaskevich/govalidator"
@@ -17,6 +18,8 @@ import (
 )
 
 var dao authDAO.DAO
+var comm authComm.Handler
+var jwtCredential *authComm.JWTCredential
 
 func main() {
 	configPtr := flag.String("config", "/etc/auth-service/config.json", "configuration filepath")
@@ -32,6 +35,14 @@ func main() {
 
 	dao = authDAO.DAO{}
 	err = dao.Init(config)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	comm = authComm.Handler{}
+	comm.Init(config)
+
+	jwtCredential, err = comm.CreateJWTCredential()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -73,7 +84,7 @@ func authCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessToken, err := createToken(req.Email, "TODO", "TODO")
+	accessToken, err := createToken(req.Email, jwtCredential.Key, jwtCredential.Secret)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Could not create access token: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
@@ -87,12 +98,12 @@ func authCreateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Create an access token with a 24 hour lifetime
-func createToken(email string, issuer string, key string) (string, error) {
+func createToken(email string, issuer string, secret string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"email": email,
 		"iss":   issuer,
 		"exp":   time.Now().Add(24 * time.Hour).Unix(),
 	})
 
-	return token.SignedString([]byte(key))
+	return token.SignedString([]byte(secret))
 }

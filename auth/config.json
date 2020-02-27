@@ -3,5 +3,7 @@
   "dbName": "postgres",
   "host": "auth-db",
   "sslMode": "disable",
-  "services": {}
+  "services": {
+    "kong-admin": "http://kong:8001"
+  }
 }
