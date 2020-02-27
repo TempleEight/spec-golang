@@ -8,7 +8,7 @@ shift
 cmd="$@"
 
 until curl $host 2>&1 1>/dev/null; do
-  >&2 echo "Kong is unavailable - sleeping"
+  echo "Kong is unavailable - sleeping"
   sleep 1
 done
 
