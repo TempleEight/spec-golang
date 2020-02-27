@@ -42,7 +42,7 @@ func createKongConsumer(hostname string) (*consumerResponse, error) {
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode != 201 {
+	if res.StatusCode != http.StatusCreated {
 		// If we have an error code, the message _should_ be in the body
 		bodyBytes, err := ioutil.ReadAll(res.Body)
 		if err != nil {
@@ -68,7 +68,7 @@ func requestCredential(hostname string, consumer *consumerResponse) (*JWTCredent
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode != 201 {
+	if res.StatusCode != http.StatusCreated {
 		// If we have an error code, the message _should_ be in the body
 		bodyBytes, err := ioutil.ReadAll(res.Body)
 		if err != nil {
