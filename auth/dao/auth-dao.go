@@ -46,6 +46,6 @@ func executeQuery(db *sql.DB, query string, args ...interface{}) (int64, error) 
 }
 
 func (dao *DAO) CreateAuth(request AuthCreateRequest) error {
-	_, err := executeQuery(dao.DB, "INSERT INTO auth (email, password) VALUES ($1, $2) RETURNING *", request.Email, request.Password)
+	_, err := executeQuery(dao.DB, "INSERT INTO auth (email, password) VALUES ($1, $2)", request.Email, request.Password)
 	return err
 }

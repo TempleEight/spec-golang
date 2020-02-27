@@ -84,7 +84,6 @@ func authCreateHandler(w http.ResponseWriter, r *http.Request) {
 		AccessToken: accessToken,
 	}
 	json.NewEncoder(w).Encode(response)
-
 }
 
 // Create an access token with a 24 hour lifetime
