@@ -137,7 +137,7 @@ func authGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessToken, err := createToken(req.Email, "TODO", "TODO")
+	accessToken, err := createToken(req.Email, jwtCredential.Key, jwtCredential.Secret)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Could not create access token: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
