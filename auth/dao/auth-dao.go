@@ -14,24 +14,24 @@ type DAO struct {
 	DB *sql.DB
 }
 
-// CreateAuthRequest contains the information retrieved from an end user to create a new auth
+// AuthCreateRequest contains the information retrieved from an end user to create a new auth
 type AuthCreateRequest struct {
 	Email    string `valid:"email,required"`
 	Password string `valid:"type(string),required,stringlength(8|64)"`
 }
 
-// ReadAuthRequest contains the information retrieved from an end user to validate an existing auth
+// AuthReadRequest contains the information retrieved from an end user to validate an existing auth
 type AuthReadRequest struct {
 	Email    string `valid:"email,required"`
 	Password string `valid:"type(string),required,stringlength(8|64)"`
 }
 
-// CreateAuthResponse contains an access token associated to a given auth
+// AuthCreateResponse contains an access token associated to a given auth
 type AuthCreateResponse struct {
 	AccessToken string
 }
 
-// ReadAuthResponse contains an access token associated to a given auth
+// AuthReadResponse contains an access token associated to a given auth
 type AuthReadResponse struct {
 	AccessToken string
 }
@@ -68,7 +68,7 @@ func (dao *DAO) CreateAuth(request AuthCreateRequest) error {
 	return err
 }
 
-// GetAuth attempts to find an existing auth'd user in the data store
+// ReadAuth attempts to find an existing auth'd user in the data store
 func (dao *DAO) ReadAuth(request AuthReadRequest) (*AuthReadRequest, error) {
 	row, err := executeQueryWithRowResponse(dao.DB, "SELECT email, password FROM auth WHERE email = $1", request.Email)
 	var auth AuthReadRequest
