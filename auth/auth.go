@@ -49,12 +49,12 @@ func main() {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/auth", authCreateHandler).Methods(http.MethodPost)
-	r.HandleFunc("/auth", authGetHandler).Methods(http.MethodGet)
+	r.HandleFunc("/auth", authReadHandler).Methods(http.MethodGet)
 	log.Fatal(http.ListenAndServe(":82", r))
 }
 
 func authCreateHandler(w http.ResponseWriter, r *http.Request) {
-	var req authDAO.PlaintextAuth
+	var req authDAO.CreateAuthRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
@@ -77,7 +77,7 @@ func authCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedAuth := authDAO.HashedAuth{
+	hashedAuth := authDAO.CreateAuthRequest{
 		Email:    req.Email,
 		Password: string(hashedPassword),
 	}
@@ -95,14 +95,14 @@ func authCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := authDAO.AuthResponse{
+	response := authDAO.CreateAuthResponse{
 		AccessToken: accessToken,
 	}
 	json.NewEncoder(w).Encode(response)
 }
 
-func authGetHandler(w http.ResponseWriter, r *http.Request) {
-	var req authDAO.PlaintextAuth
+func authReadHandler(w http.ResponseWriter, r *http.Request) {
+	var req authDAO.ReadAuthRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
@@ -117,7 +117,7 @@ func authGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	auth, err := dao.GetAuth(req)
+	auth, err := dao.ReadAuth(req)
 	if err != nil {
 		switch err {
 		case authDAO.ErrAuthNotFound:
@@ -144,7 +144,7 @@ func authGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := authDAO.AuthResponse{
+	response := authDAO.ReadAuthResponse{
 		AccessToken: accessToken,
 	}
 	json.NewEncoder(w).Encode(response)

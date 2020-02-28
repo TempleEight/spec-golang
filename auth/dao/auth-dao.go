@@ -14,20 +14,25 @@ type DAO struct {
 	DB *sql.DB
 }
 
-// PlaintextAuth contains the information retrieved from an end user
-type PlaintextAuth struct {
+// CreateAuthRequest contains the information retrieved from an end user to create a new auth
+type CreateAuthRequest struct {
 	Email    string `valid:"email,required"`
 	Password string `valid:"type(string),required,stringlength(8|64)"`
 }
 
-// HashedAuth contains the information required to create a new authorized user, with the password hashed and salted
-type HashedAuth struct {
+// ReadAuthRequest contains the information retrieved from an end user to validate an existing auth
+type ReadAuthRequest struct {
 	Email    string `valid:"email,required"`
 	Password string `valid:"type(string),required,stringlength(8|64)"`
 }
 
-// AuthResponse contains an access token
-type AuthResponse struct {
+// CreateAuthResponse contains an access token associated to a given auth
+type CreateAuthResponse struct {
+	AccessToken string
+}
+
+// ReadAuthResponse contains an access token associated to a given auth
+type ReadAuthResponse struct {
 	AccessToken string
 }
 
@@ -58,15 +63,15 @@ func executeQueryWithRowResponse(db *sql.DB, query string, args ...interface{}) 
 }
 
 // CreateAuth persists a new auth'd user to the data store
-func (dao *DAO) CreateAuth(request HashedAuth) error {
+func (dao *DAO) CreateAuth(request CreateAuthRequest) error {
 	_, err := executeQuery(dao.DB, "INSERT INTO auth (email, password) VALUES ($1, $2)", request.Email, request.Password)
 	return err
 }
 
 // GetAuth attempts to find an existing auth'd user in the data store
-func (dao *DAO) GetAuth(request PlaintextAuth) (*HashedAuth, error) {
+func (dao *DAO) ReadAuth(request ReadAuthRequest) (*ReadAuthRequest, error) {
 	row, err := executeQueryWithRowResponse(dao.DB, "SELECT email, password FROM auth WHERE email = $1", request.Email)
-	var auth HashedAuth
+	var auth ReadAuthRequest
 	err = row.Scan(&auth.Email, &auth.Password)
 	if err != nil {
 		switch err {
