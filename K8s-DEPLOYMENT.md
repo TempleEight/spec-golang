@@ -35,7 +35,13 @@ All of the Kubernetes configuration YAML files are stored in the `/kube` directo
 Running:
 
 ```
-kubectl create -f kube
+kubectl create -f kube/{DIR}
 ```
 
-Will provision all of the resources described there.
+Will provision all of the resources described in that directory, so run that command for each subsection of infra you want to provision.
+
+As an example, to deploy all kong infrastructure:
+
+```
+kubectl create -f kube/kong
+```
