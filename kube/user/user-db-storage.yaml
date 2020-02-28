@@ -2,10 +2,10 @@
 kind: PersistentVolume
 apiVersion: v1
 metadata:
-  name: match-db-volume
+  name: user-db-volume
   labels:
     type: local
-    app: match-db
+    app: user-db
 spec:
   storageClassName: manual
   capacity:
@@ -14,20 +14,20 @@ spec:
     - ReadWriteMany
   persistentVolumeReclaimPolicy: Delete
   hostPath:
-    path: "/data/match-db"
+    path: "/data/user-db"
 ---
-# The claim into the persistent storage used by the pod to store
+ # The claim into the persistent storage used by the pod to store
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   creationTimestamp: null
   labels:
-    app: match-db
-  name: match-db-claim
+    app: user-db
+  name: user-db-claim
 spec:
   accessModes:
   - ReadWriteMany
-  volumeName: match-db-volume
+  volumeName: user-db-volume
   storageClassName: manual
   resources:
     requests:

@@ -1,37 +1,37 @@
- # Deployment to manage Postgres instance pods for match service
+ # Deployment to manage Postgres instance pods for user service
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: match
-  name: match-db
+    app: user
+  name: user-db
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: match
+      app: user
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
-        app: match
+        app: user
     spec:
       containers:
       - env:
         - name: PGUSER
           value: postgres
         image: postgres:12.1
-        name: match-db
+        name: user-db
         volumeMounts:
           # Mount the PV claim from the storage file
         - mountPath: /var/lib/postgresql/data
-          name: match-db-claim
+          name: user-db-claim
           # Mount the SQL script from Config Map
         - mountPath: /docker-entrypoint-initdb.d/init.sql
           # subPath allows mounting a single file, not a directory
           subPath: init.sql
-          name: match-db-init
+          name: user-db-init
         lifecycle:
           postStart:
             exec:
@@ -40,9 +40,9 @@ spec:
               command: ["/bin/sh", "-c", "psql -U postgres -f /docker-entrypoint-initdb.d/init.sql && echo done"]
       restartPolicy: Always
       volumes:
-      - name: match-db-init
+      - name: user-db-init
         configMap:
-          name: match-db-config
-      - name: match-db-claim
+          name: user-db-config
+      - name: user-db-claim
         persistentVolumeClaim:
-          claimName: match-db-claim
+          claimName: user-db-claim
