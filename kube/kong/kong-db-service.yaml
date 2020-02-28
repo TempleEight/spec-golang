@@ -1,0 +1,14 @@
+# Service to expose the kong-db to the kong pod
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: kong-db
+  name: kong-db
+spec:
+  ports:
+  - name: "database"
+    port: 5432
+    targetPort: 5432
+  selector:
+    app: kong-db
