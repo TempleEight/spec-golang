@@ -1,0 +1,26 @@
+# Deployment to manage match service pods
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: match
+  name: match
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: match
+  template:
+    metadata:
+      labels:
+        app: match
+    spec:
+      containers:
+      - image: registry.lewiky.com/temple-match-service
+        name: match
+        ports:
+        - containerPort: 81
+      imagePullSecrets:
+        #Use the `regcred` secret to connect to the registry
+      - name: regcred
+      restartPolicy: Always

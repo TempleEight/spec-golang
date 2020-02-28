@@ -1,0 +1,14 @@
+# Match service that exposes the go endpoint to the cluster
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: match
+  name: match
+spec:
+  ports:
+  - name: "api"
+    port: 80
+    targetPort: 81
+  selector:
+    app: match

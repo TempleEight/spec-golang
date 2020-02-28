@@ -2,13 +2,13 @@
 
 # Add the user service
 curl -i -X POST \
-  --url http://localhost:8001/services/ \
+  --url http://${KONG_HOST}:${KONG_CONFIG_PORT}/services/ \
   --data 'name=user-service' \
   --data 'url=http://user:80/user'
 
 # Add the match service
 curl -i -X POST \
-  --url http://localhost:8001/services/ \
+  --url http://${KONG_HOST}:${KONG_CONFIG_PORT}/services/ \
   --data 'name=match-service' \
   --data 'url=http://match:81/match'
 
@@ -20,13 +20,13 @@ curl -i -X POST \
 
 # Add a route for user
 curl -i -X POST \
-  --url http://localhost:8001/services/user-service/routes \
+  --url http://${KONG_HOST}:${KONG_CONFIG_PORT}/services/user-service/routes \
   --data 'hosts[]=localhost:8000' \
   --data 'paths[]=/api/user'
 
 # Add a route for match
 curl -i -X POST \
-  --url http://localhost:8001/services/match-service/routes \
+  --url http://${KONG_HOST}:${KONG_CONFIG_PORT}/services/match-service/routes \
   --data 'hosts[]=localhost:8000' \
   --data 'paths[]=/api/match'
 
