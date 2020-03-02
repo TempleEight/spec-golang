@@ -1,3 +1,4 @@
+# Service to expose the match-db to matches service
 apiVersion: v1
 kind: Service
 metadata:
