@@ -6,6 +6,7 @@ metadata:
     app: kong-db
   name: kong-db
 spec:
+  # Exposes an internal NodePort service for communicating within the cluster
   ports:
   - name: "database"
     port: 5432

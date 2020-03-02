@@ -6,7 +6,7 @@ To deploy this project onto a kubernetes cluster follow these steps:
 
 First, a Kubernetes cluster is required to deploy to. Instructions aren't provided here for production ready clusters, see the [Kubernetes Documentation](https://kubernetes.io/docs/tasks/) for that. 
 
-For local development, it's reccomended to use [Minikube](https://github.com/kubernetes/minikube). Follow the instructions to get it set up.
+For local development, it's recommended to use [Minikube](https://github.com/kubernetes/minikube). Follow the instructions to get it set up.
 
 You can start the minikube deaemon with: `minikube start --vm-driver=virtualbox` (assuming you're using the virtualbox backend).
 
@@ -45,3 +45,14 @@ As an example, to deploy all kong infrastructure:
 ```
 kubectl create -f kube/kong
 ```
+
+### Cleaning up
+
+Once done, clean up the cluster by running
+
+```
+minikube delete
+```
+
+
+This will remove all traces of the cluster from your computer.
