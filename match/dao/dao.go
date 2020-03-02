@@ -94,15 +94,15 @@ func (dao *DAO) ListMatch() (*MatchListResponse, error) {
 		return nil, err
 	}
 
-	var matchList MatchListResponse
-	matchList.MatchList = make([]MatchReadResponse, 0)
+	var resp MatchListResponse
+	resp.MatchList = make([]MatchReadResponse, 0)
 	for rows.Next() {
 		var match MatchReadResponse
 		err = rows.Scan(&match.ID, &match.UserOne, &match.UserTwo, &match.MatchedOn)
 		if err != nil {
 			return nil, err
 		}
-		matchList.MatchList = append(matchList.MatchList, match)
+		resp.MatchList = append(resp.MatchList, match)
 	}
 
 	err = rows.Err()
@@ -110,7 +110,7 @@ func (dao *DAO) ListMatch() (*MatchListResponse, error) {
 		return nil, err
 	}
 
-	return &matchList, nil
+	return &resp, nil
 }
 
 // CreateMatch inserts a new match into the database given two user IDs
