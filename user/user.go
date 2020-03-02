@@ -83,7 +83,7 @@ func userReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := dao.GetUser(userID)
+	user, err := dao.ReadUser(userID)
 	if err != nil {
 		switch err.(type) {
 		case userDAO.ErrUserNotFound:

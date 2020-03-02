@@ -133,7 +133,7 @@ func matchReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	match, err := dao.GetMatch(matchID)
+	match, err := dao.ReadMatch(matchID)
 	if err != nil {
 		switch err.(type) {
 		case matchDAO.ErrMatchNotFound:

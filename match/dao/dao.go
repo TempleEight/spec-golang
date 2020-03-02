@@ -20,8 +20,8 @@ type MatchCreateRequest struct {
 	UserTwo *int `valid:"-"`
 }
 
-// MatchGetResponse contains the information stored about a given match
-type MatchGetResponse struct {
+// MatchReadResponse contains the information stored about a given match
+type MatchReadResponse struct {
 	ID        int
 	UserOne   int
 	UserTwo   int
@@ -36,7 +36,7 @@ type MatchUpdateRequest struct {
 
 // MatchListResponse contains the information stored about all matches
 type MatchListResponse struct {
-	MatchList []MatchGetResponse
+	MatchList []MatchReadResponse
 }
 
 // Executes the query, returning the rows
@@ -77,14 +77,14 @@ func (dao *DAO) CreateMatch(request MatchCreateRequest) error {
 	return err
 }
 
-// GetMatch returns the information about a match stored for a given ID
-func (dao *DAO) GetMatch(id int64) (*MatchGetResponse, error) {
+// ReaddMatch returns the information about a match stored for a given ID
+func (dao *DAO) ReadMatch(id int64) (*MatchReadResponse, error) {
 	row, err := executeQueryWithRowResponse(dao.DB, "SELECT * FROM Match WHERE id = $1", id)
 	if err != nil {
 		return nil, err
 	}
 
-	var match MatchGetResponse
+	var match MatchReadResponse
 	err = row.Scan(&match.ID, &match.UserOne, &match.UserTwo, &match.MatchedOn)
 	if err != nil {
 		switch err {
@@ -130,9 +130,9 @@ func (dao *DAO) ListMatch() (*MatchListResponse, error) {
 	}
 
 	var matchList MatchListResponse
-	matchList.MatchList = make([]MatchGetResponse, 0)
+	matchList.MatchList = make([]MatchReadResponse, 0)
 	for rows.Next() {
-		var match MatchGetResponse
+		var match MatchReadResponse
 		err = rows.Scan(&match.ID, &match.UserOne, &match.UserTwo, &match.MatchedOn)
 		if err != nil {
 			return nil, err

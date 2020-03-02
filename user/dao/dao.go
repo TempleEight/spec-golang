@@ -19,8 +19,8 @@ type UserCreateRequest struct {
 	Name string `valid:"type(string),required,stringlength(2|255)"`
 }
 
-// UserGetResponse returns all the information stored about a user
-type UserGetResponse struct {
+// UserReadResponse returns all the information stored about a user
+type UserReadResponse struct {
 	ID   int
 	Name string
 }
@@ -63,14 +63,14 @@ func (dao *DAO) CreateUser(request UserCreateRequest) error {
 	return err
 }
 
-// GetUser returns the information about a user stored for a given ID
-func (dao *DAO) GetUser(id int64) (*UserGetResponse, error) {
+// ReadUser returns the information about a user stored for a given ID
+func (dao *DAO) ReadUser(id int64) (*UserReadResponse, error) {
 	row, err := executeQueryWithRowResponse(dao.DB, "SELECT * FROM User_Temple WHERE id = $1", id)
 	if err != nil {
 		return nil, err
 	}
 
-	var user UserGetResponse
+	var user UserReadResponse
 	err = row.Scan(&user.ID, &user.Name)
 	if err != nil {
 		switch err {
