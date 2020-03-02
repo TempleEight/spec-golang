@@ -83,15 +83,15 @@ func (dao *DAO) CreateUser(request UserCreateRequest) (*UserCreateResponse, erro
 }
 
 // ReadUser returns the information about a user stored for a given ID
-func (dao *DAO) ReadUser(id int64) (*UserReadResponse, error) {
-	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM User_Temple WHERE id = $1", id)
+func (dao *DAO) ReadUser(userID int64) (*UserReadResponse, error) {
+	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM User_Temple WHERE id = $1", userID)
 
 	var resp UserReadResponse
 	err := row.Scan(&resp.ID, &resp.Name)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			return nil, ErrUserNotFound(id)
+			return nil, ErrUserNotFound(userID)
 		default:
 			return nil, err
 		}
