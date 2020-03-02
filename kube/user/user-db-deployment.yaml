@@ -16,7 +16,10 @@ spec:
     metadata:
       labels:
         app: user
+        kind: db
+      name: user-db
     spec:
+      hostname: user-db
       containers:
       - env:
         - name: PGUSER

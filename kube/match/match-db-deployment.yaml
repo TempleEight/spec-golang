@@ -16,7 +16,10 @@ spec:
     metadata:
       labels:
         app: match
+        kind: db
+      name: match-db
     spec:
+      hostname: match-db
       containers:
       - env:
         - name: PGUSER

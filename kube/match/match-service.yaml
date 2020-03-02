@@ -12,3 +12,4 @@ spec:
     targetPort: 81
   selector:
     app: match
+    kind: service

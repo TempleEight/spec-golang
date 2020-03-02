@@ -14,7 +14,10 @@ spec:
     metadata:
       labels:
         app: user
+        kind: service
+      name: user
     spec:
+      hostname: user
       containers:
       - image: registry.lewiky.com/temple-user-service
         name: user

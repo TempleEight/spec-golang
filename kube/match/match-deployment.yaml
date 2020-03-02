@@ -14,7 +14,10 @@ spec:
     metadata:
       labels:
         app: match
+        kind: service
+      name: match
     spec:
+      hostname: match
       containers:
       - image: registry.lewiky.com/temple-match-service
         name: match
