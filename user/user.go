@@ -67,13 +67,13 @@ func userCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = dao.CreateUser(req)
+	resp, err := dao.CreateUser(req)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(struct{}{})
+	json.NewEncoder(w).Encode(resp)
 }
 
 func userReadHandler(w http.ResponseWriter, r *http.Request) {
@@ -119,7 +119,7 @@ func userUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = dao.UpdateUser(userID, req)
+	resp, err := dao.UpdateUser(userID, req)
 	if err != nil {
 		switch err.(type) {
 		case userDAO.ErrUserNotFound:
@@ -130,7 +130,7 @@ func userUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	json.NewEncoder(w).Encode(struct{}{})
+	json.NewEncoder(w).Encode(resp)
 }
 
 func userDeleteHandler(w http.ResponseWriter, r *http.Request) {
