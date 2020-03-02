@@ -93,8 +93,8 @@ func matchCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 	userOneValid, err := comm.CheckUser(*req.UserOne)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unable to reach user service: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
@@ -106,8 +106,8 @@ func matchCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 	userTwoValid, err := comm.CheckUser(*req.UserTwo)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unable to reach user service: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
@@ -171,6 +171,32 @@ func matchUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	_, err = valid.ValidateStruct(req)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	userOneValid, err := comm.CheckUser(*req.UserOne)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()))
+		http.Error(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+
+	if !userOneValid {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unknown User: %d", *req.UserOne))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	userTwoValid, err := comm.CheckUser(*req.UserTwo)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()))
+		http.Error(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+
+	if !userTwoValid {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unknown User: %d", *req.UserTwo))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
