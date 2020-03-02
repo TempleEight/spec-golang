@@ -38,8 +38,10 @@ curl -i -X POST \
 
 # Require a JWT for the user service
 curl -X POST http://localhost:8001/services/user-service/plugins \
-    --data "name=jwt"
+    --data "name=jwt"\
+    --data "config.claims_to_verify=exp"
 
 # Require a JWT for the match service
 curl -X POST http://localhost:8001/services/match-service/plugins \
-    --data "name=jwt"
+    --data "name=jwt"\
+    --data "config.claims_to_verify=exp"
