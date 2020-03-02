@@ -13,4 +13,3 @@ spec:
   selector:
     app: match
     kind: db
-    
