@@ -16,21 +16,3 @@ metadata:
   resourceVersion: "9754"
   selfLink: /api/v1/namespaces/default/configmaps/user-db-config
   uid: 691713e2-fae2-4972-8f33-e19b9972db0f
----
-apiVersion: v1
-data:
-  init.sql: |
-    CREATE TABLE Match (
-        id SERIAL PRIMARY KEY,
-        userOne int,
-        userTwo int,
-        matchedOn timestamp
-      );
-kind: ConfigMap
-metadata:
-  creationTimestamp: "2020-02-25T16:47:15Z"
-  name: match-db-config
-  namespace: default
-  resourceVersion: "10537"
-  selfLink: /api/v1/namespaces/default/configmaps/match-db-config
-  uid: a0d353dd-ff92-4c23-a599-ca6969047682
