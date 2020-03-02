@@ -56,7 +56,7 @@ type MatchUpdateResponse struct {
 }
 
 // Executes the query, returning the rows
-func executeQueryWithResponses(db *sql.DB, query string, args ...interface{}) *sql.Rows {
+func executeQueryWithResponses(db *sql.DB, query string, args ...interface{}) (*sql.Rows, error) {
 	return db.Query(query, args...)
 }
 
@@ -115,13 +115,14 @@ func (dao *DAO) ListMatch() (*MatchListResponse, error) {
 
 // CreateMatch inserts a new match into the database given two user IDs
 func (dao *DAO) CreateMatch(request MatchCreateRequest) (*MatchCreateResponse, error) {
-	row := executeQuery(dao.DB, "INSERT INTO Match (userOne, userTwo, matchedOn) VALUES ($1, $2, NOW())", request.UserOne, request.UserTwo)
+	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO Match (userOne, userTwo, matchedOn) VALUES ($1, $2, NOW()) RETURNING *", request.UserOne, request.UserTwo)
 
 	var resp MatchCreateResponse
 	err := row.Scan(&resp.ID, &resp.UserOne, &resp.UserTwo, &resp.MatchedOn)
 	if err != nil {
 		return nil, err
 	}
+
 	return &resp, nil
 }
 
@@ -144,15 +145,15 @@ func (dao *DAO) ReadMatch(matchID int64) (*MatchReadResponse, error) {
 }
 
 // UpdateMatch updates an already existing match to two user IDs
-func (dao *DAO) UpdateMatch(matchID int64, request MatchUpdateRequest) error {
-	row := executeQueryWithRowResponse(dao.DB, "UPDATE Match SET userOne = $1, userTwo = $2, matchedOn = NOW() WHERE id = $3", request.UserOne, request.UserTwo, matchID)
+func (dao *DAO) UpdateMatch(matchID int64, request MatchUpdateRequest) (*MatchUpdateResponse, error) {
+	row := executeQueryWithRowResponse(dao.DB, "UPDATE Match SET userOne = $1, userTwo = $2, matchedOn = NOW() WHERE id = $3 RETURNING *", request.UserOne, request.UserTwo, matchID)
 
 	var resp MatchUpdateResponse
 	err := row.Scan(&resp.ID, &resp.UserOne, &resp.UserTwo, &resp.MatchedOn)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			return nil, ErrMatchNotFound(id)
+			return nil, ErrMatchNotFound(matchID)
 		default:
 			return nil, err
 		}

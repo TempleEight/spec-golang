@@ -117,7 +117,7 @@ func matchCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err = dao.CreateMatch(req)
+	resp, err := dao.CreateMatch(req)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
@@ -201,7 +201,7 @@ func matchUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err = dao.UpdateMatch(matchID, req)
+	resp, err := dao.UpdateMatch(matchID, req)
 	if err != nil {
 		switch err.(type) {
 		case matchDAO.ErrMatchNotFound:
