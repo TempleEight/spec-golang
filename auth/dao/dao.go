@@ -72,7 +72,7 @@ func (dao *DAO) CreateAuth(request AuthCreateRequest) error {
 func (dao *DAO) ReadAuth(request AuthReadRequest) (*AuthReadRequest, error) {
 	row := executeQueryWithRowResponse(dao.DB, "SELECT email, password FROM auth WHERE email = $1", request.Email)
 	var auth AuthReadRequest
-	err = row.Scan(&auth.Email, &auth.Password)
+	err := row.Scan(&auth.Email, &auth.Password)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
