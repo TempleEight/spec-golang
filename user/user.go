@@ -7,14 +7,14 @@ import (
 	"log"
 	"net/http"
 
-	userDAO "github.com/TempleEight/spec-golang/user/dao"
+	"github.com/TempleEight/spec-golang/user/dao"
 	"github.com/TempleEight/spec-golang/user/util"
 	valid "github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
 )
 
 type Env struct {
-	dao userDAO.Datastore
+	dao dao.Datastore
 }
 
 func main() {
@@ -29,11 +29,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dao, err := userDAO.Init(config)
+	d, err := dao.Init(config)
 	if err != nil {
 		log.Fatal(err)
 	}
-	env := Env{dao}
+	env := Env{d}
 
 	r := mux.NewRouter()
 	r.HandleFunc("/user", env.userCreateHandler).Methods(http.MethodPost)
@@ -54,7 +54,7 @@ func jsonMiddleware(next http.Handler) http.Handler {
 }
 
 func (env *Env) userCreateHandler(w http.ResponseWriter, r *http.Request) {
-	var req userDAO.UserCreateRequest
+	var req dao.UserCreateRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
@@ -88,7 +88,7 @@ func (env *Env) userReadHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := env.dao.ReadUser(userID)
 	if err != nil {
 		switch err.(type) {
-		case userDAO.ErrUserNotFound:
+		case dao.ErrUserNotFound:
 			http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusNotFound)
 		default:
 			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
@@ -106,7 +106,7 @@ func (env *Env) userUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req userDAO.UserUpdateRequest
+	var req dao.UserUpdateRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
@@ -124,7 +124,7 @@ func (env *Env) userUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	resp, err := env.dao.UpdateUser(userID, req)
 	if err != nil {
 		switch err.(type) {
-		case userDAO.ErrUserNotFound:
+		case dao.ErrUserNotFound:
 			http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusNotFound)
 		default:
 			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
@@ -145,7 +145,7 @@ func (env *Env) userDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	err = env.dao.DeleteUser(userID)
 	if err != nil {
 		switch err.(type) {
-		case userDAO.ErrUserNotFound:
+		case dao.ErrUserNotFound:
 			http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusNotFound)
 		default:
 			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
