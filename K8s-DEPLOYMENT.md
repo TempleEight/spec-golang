@@ -1,7 +1,7 @@
 # Kubernetes Deployment
 
-> __ NEW: Automated Deployment!  __
-> Simply run `source deploy.sh` to do all these steps for you!
+#### _NEW: Automated Deployment!_
+_Simply run `source deploy.sh` to do all these steps for you!_
 
 To deploy this project onto a kubernetes cluster follow these steps:
 
