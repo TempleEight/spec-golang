@@ -81,14 +81,14 @@ func authCreateHandler(w http.ResponseWriter, r *http.Request) {
 		Email:    req.Email,
 		Password: string(hashedPassword),
 	}
-	err = dao.CreateAuth(hashedAuth)
+	auth, err := dao.CreateAuth(hashedAuth)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
-	accessToken, err := createToken(req.Email, jwtCredential.Key, jwtCredential.Secret)
+	accessToken, err := createToken(auth.Id, jwtCredential.Key, jwtCredential.Secret)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Could not create access token: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
@@ -137,7 +137,7 @@ func authReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessToken, err := createToken(req.Email, jwtCredential.Key, jwtCredential.Secret)
+	accessToken, err := createToken(auth.Id, jwtCredential.Key, jwtCredential.Secret)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Could not create access token: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
@@ -151,11 +151,11 @@ func authReadHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Create an access token with a 24 hour lifetime
-func createToken(email string, issuer string, secret string) (string, error) {
+func createToken(id int, issuer string, secret string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"email": email,
-		"iss":   issuer,
-		"exp":   time.Now().Add(24 * time.Hour).Unix(),
+		"id":  id,
+		"iss": issuer,
+		"exp": time.Now().Add(24 * time.Hour).Unix(),
 	})
 
 	return token.SignedString([]byte(secret))
