@@ -1,0 +1,16 @@
+# Service to expose user-db to user service
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: user-db
+  name: user-db
+spec:
+  ports:
+  - name: "db"
+    port: 5432
+    targetPort: 5432
+  selector:
+    app: user
+    kind: db
+    
