@@ -9,6 +9,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// Datastore provides the interface adopted by the DAO, allowing for mocking
 type Datastore interface {
 	CreateUser(request UserCreateRequest) (*UserCreateResponse, error)
 	ReadUser(userID int64) (*UserReadResponse, error)
