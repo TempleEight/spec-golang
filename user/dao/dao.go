@@ -9,6 +9,14 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// Datastore provides the interface adopted by the DAO, allowing for mocking
+type Datastore interface {
+	CreateUser(request UserCreateRequest) (*UserCreateResponse, error)
+	ReadUser(userID int64) (*UserReadResponse, error)
+	UpdateUser(userID int64, request UserUpdateRequest) (*UserUpdateResponse, error)
+	DeleteUser(userID int64) error
+}
+
 // DAO encapsulates access to the database
 type DAO struct {
 	DB *sql.DB
@@ -58,15 +66,13 @@ func executeQuery(db *sql.DB, query string, args ...interface{}) (int64, error) 
 }
 
 // Init opens the database connection
-func (dao *DAO) Init(config *util.Config) error {
+func Init(config *util.Config) (*DAO, error) {
 	connStr := fmt.Sprintf("user=%s dbname=%s host=%s sslmode=%s", config.User, config.DBName, config.Host, config.SSLMode)
-	var err error
-	dao.DB, err = sql.Open("postgres", connStr)
+	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	return nil
+	return &DAO{db}, nil
 }
 
 // CreateUser creates a new user in the database, returning the newly created user
