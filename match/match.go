@@ -117,13 +117,13 @@ func matchCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = dao.CreateMatch(req)
+	resp, err := dao.CreateMatch(req)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(struct{}{})
+	json.NewEncoder(w).Encode(resp)
 }
 
 func matchReadHandler(w http.ResponseWriter, r *http.Request) {
@@ -133,7 +133,7 @@ func matchReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	match, err := dao.GetMatch(matchID)
+	match, err := dao.ReadMatch(matchID)
 	if err != nil {
 		switch err.(type) {
 		case matchDAO.ErrMatchNotFound:
@@ -201,7 +201,7 @@ func matchUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = dao.UpdateMatch(matchID, req)
+	resp, err := dao.UpdateMatch(matchID, req)
 	if err != nil {
 		switch err.(type) {
 		case matchDAO.ErrMatchNotFound:
@@ -212,7 +212,7 @@ func matchUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	json.NewEncoder(w).Encode(struct{}{})
+	json.NewEncoder(w).Encode(resp)
 }
 
 func matchDeleteHandler(w http.ResponseWriter, r *http.Request) {

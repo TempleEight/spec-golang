@@ -19,20 +19,32 @@ type UserCreateRequest struct {
 	Name string `valid:"type(string),required,stringlength(2|255)"`
 }
 
-// UserGetResponse returns all the information stored about a user
-type UserGetResponse struct {
-	ID   int
-	Name string
-}
-
 // UserUpdateRequest contains all the information about an existing user
 type UserUpdateRequest struct {
 	Name string `valid:"type(string),required,stringlength(2|255)"`
 }
 
+// UserCreateResponse contains the information about the newly created user
+type UserCreateResponse struct {
+	ID   int
+	Name string
+}
+
+// UserReadResponse returns all the information stored about a user
+type UserReadResponse struct {
+	ID   int
+	Name string
+}
+
+// UserUpdateResponse contains the information about the newly updated user
+type UserUpdateResponse struct {
+	ID   int
+	Name string
+}
+
 // Executes the query, returning the row
-func executeQueryWithRowResponse(db *sql.DB, query string, args ...interface{}) (*sql.Row, error) {
-	return db.QueryRow(query, args...), nil
+func executeQueryWithRowResponse(db *sql.DB, query string, args ...interface{}) *sql.Row {
+	return db.QueryRow(query, args...)
 }
 
 // Executes a query, returning the number of rows affected
@@ -57,43 +69,53 @@ func (dao *DAO) Init(config *util.Config) error {
 	return nil
 }
 
-// CreateUser creates a new user in the database
-func (dao *DAO) CreateUser(request UserCreateRequest) error {
-	_, err := executeQuery(dao.DB, "INSERT INTO User_Temple (name) VALUES ($1) RETURNING *", request.Name)
-	return err
-}
+// CreateUser creates a new user in the database, returning the newly created user
+func (dao *DAO) CreateUser(request UserCreateRequest) (*UserCreateResponse, error) {
+	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO User_Temple (name) VALUES ($1) RETURNING *", request.Name)
 
-// GetUser returns the information about a user stored for a given ID
-func (dao *DAO) GetUser(id int64) (*UserGetResponse, error) {
-	row, err := executeQueryWithRowResponse(dao.DB, "SELECT * FROM User_Temple WHERE id = $1", id)
+	var resp UserCreateResponse
+	err := row.Scan(&resp.ID, &resp.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	var user UserGetResponse
-	err = row.Scan(&user.ID, &user.Name)
+	return &resp, nil
+}
+
+// ReadUser returns the information about a user stored for a given ID
+func (dao *DAO) ReadUser(userID int64) (*UserReadResponse, error) {
+	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM User_Temple WHERE id = $1", userID)
+
+	var resp UserReadResponse
+	err := row.Scan(&resp.ID, &resp.Name)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			return nil, ErrUserNotFound(id)
+			return nil, ErrUserNotFound(userID)
 		default:
 			return nil, err
 		}
 	}
 
-	return &user, nil
+	return &resp, nil
 }
 
 // UpdateUser updates a user in the database, returning an error if it fails
-func (dao *DAO) UpdateUser(userID int64, request UserUpdateRequest) error {
-	rowsAffected, err := executeQuery(dao.DB, "UPDATE User_Temple set Name = $1 WHERE Id = $2", request.Name, userID)
+func (dao *DAO) UpdateUser(userID int64, request UserUpdateRequest) (*UserUpdateResponse, error) {
+	row := executeQueryWithRowResponse(dao.DB, "UPDATE User_Temple set Name = $1 WHERE Id = $2 RETURNING *", request.Name, userID)
+
+	var resp UserUpdateResponse
+	err := row.Scan(&resp.ID, &resp.Name)
 	if err != nil {
-		return err
-	} else if rowsAffected == 0 {
-		return ErrUserNotFound(userID)
+		switch err {
+		case sql.ErrNoRows:
+			return nil, ErrUserNotFound(userID)
+		default:
+			return nil, err
+		}
 	}
 
-	return nil
+	return &resp, nil
 }
 
 // DeleteUser deletes a user in the database, returning an error if it fails or the user doesn't exist
