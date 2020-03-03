@@ -22,7 +22,7 @@ func (md *MockDAO) CreateUser(request dao.UserCreateRequest) (*dao.UserCreateRes
 	mockUser := MockUser{len(md.Users), request.Name}
 	md.Users = append(md.Users, mockUser)
 	return &dao.UserCreateResponse{
-		ID: mockUser.Id,
+		ID:   mockUser.Id,
 		Name: mockUser.Name,
 	}, nil
 }
@@ -43,7 +43,7 @@ func (md *MockDAO) UpdateUser(userID int64, request dao.UserUpdateRequest) (*dao
 	for i, user := range md.Users {
 		if int64(user.Id) == userID {
 			md.Users[i].Name = request.Name
-			return &dao.UserUpdateResponse {
+			return &dao.UserUpdateResponse{
 				ID:   user.Id,
 				Name: user.Name,
 			}, nil
@@ -63,7 +63,7 @@ func (md *MockDAO) DeleteUser(userID int64) error {
 }
 
 var mockEnv = Env{
-&MockDAO{Users: make([]MockUser,0)},
+	&MockDAO{Users: make([]MockUser, 0)},
 }
 
 func makeRequest(method string, url string, body string, handler http.HandlerFunc) (*httptest.ResponseRecorder, error) {
