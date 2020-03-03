@@ -65,15 +65,15 @@ func executeQuery(db *sql.DB, query string, args ...interface{}) (int64, error) 
 	return result.RowsAffected()
 }
 
-func executeQueryWithRowResponse(db *sql.DB, query string, args ...interface{}) (*sql.Row, error) {
-	return db.QueryRow(query, args...), nil
+func executeQueryWithRowResponse(db *sql.DB, query string, args ...interface{}) *sql.Row {
+	return db.QueryRow(query, args...)
 }
 
 // CreateAuth persists a new auth'd user to the data store
 func (dao *DAO) CreateAuth(request AuthCreateRequest) (*Auth, error) {
-	row, err := executeQueryWithRowResponse(dao.DB, "INSERT INTO auth (email, password) VALUES ($1, $2) RETURNING *", request.Email, request.Password)
+	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO auth (email, password) VALUES ($1, $2) RETURNING *", request.Email, request.Password)
 	var auth Auth
-	err = row.Scan(&auth.Id, &auth.Email, &auth.Password)
+	err := row.Scan(&auth.Id, &auth.Email, &auth.Password)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
@@ -88,9 +88,9 @@ func (dao *DAO) CreateAuth(request AuthCreateRequest) (*Auth, error) {
 
 // ReadAuth attempts to find an existing auth'd user in the data store
 func (dao *DAO) ReadAuth(request AuthReadRequest) (*Auth, error) {
-	row, err := executeQueryWithRowResponse(dao.DB, "SELECT * FROM auth WHERE email = $1", request.Email)
+	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM auth WHERE email = $1", request.Email)
 	var auth Auth
-	err = row.Scan(&auth.Id, &auth.Email, &auth.Password)
+	err := row.Scan(&auth.Id, &auth.Email, &auth.Password)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
