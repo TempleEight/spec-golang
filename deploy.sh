@@ -15,10 +15,11 @@ kubectl create secret docker-registry regcred --docker-server=$REG_URL --docker-
 kubectl create configmap match-db-config --from-file match-db/init.sql -o=yaml
 kubectl create configmap user-db-config --from-file user-db/init.sql -o=yaml
 kubectl create configmap auth-db-config --from-file auth-db/init.sql -o=yaml
-kubectl create -f kube/kong
-kubectl create -f kube/user
-kubectl create -f kube/match
-kubectl create -f kube/auth
+
+for dir in kube/*
+do
+  kubectl create -f $dir
+done
 
 echo $NOCOLOR
 
