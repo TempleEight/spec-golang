@@ -1,8 +1,10 @@
-#! /bin/bash
+#! /bin/sh
 # Deployment script for kube - generates configmaps from SQL init files and provisions everything
 
 GREEN="\033[1;32m"
 BLUE="\033[1;34m"
+YELLOW="\033[1;33m"
+PURPLE="\033[1;34m"
 NOCOLOR="\033[0m"
 
 minikube start --vm-driver=virtualbox
@@ -41,8 +43,17 @@ echo $BLUE
 echo KONG_ENTRY: $KONG_ENTRY
 echo KONG_ADMIN: $KONG_ADMIN
 
-echo $NOCOLOR
+echo $YELLOW
 
 echo Configuring Kong...
 
+sleep 1
+
 sh kong/configure-kong-k8s.sh
+
+echo $PURPLE
+
+echo
+echo Done!
+
+echo $NOCOLOR
