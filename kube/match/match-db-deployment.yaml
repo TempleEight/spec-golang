@@ -1,4 +1,4 @@
- # Deployment to manage Postgres instance pods for match service
+# Deployment to manage Postgres instance pods for match service
 apiVersion: apps/v1
 kind: Deployment
 metadata:
