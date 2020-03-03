@@ -126,7 +126,7 @@ func (dao *DAO) CreateMatch(request MatchCreateRequest) (*MatchCreateResponse, e
 	return &resp, nil
 }
 
-// ReaddMatch returns the information about a match stored for a given ID
+// ReadMatch returns the information about a match stored for a given ID
 func (dao *DAO) ReadMatch(matchID int64) (*MatchReadResponse, error) {
 	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM Match WHERE id = $1", matchID)
 
