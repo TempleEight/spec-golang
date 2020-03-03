@@ -9,7 +9,7 @@ minikube start --vm-driver=virtualbox
 
 echo ${GREEN}
 
-kubectl create secret docker-registry regcred --docker-server=$REG_URL --docker-username=$REG_USERNAME --docker-password=$REG_PASSWORD --docker-email=$EMAIL
+kubectl create secret docker-registry regcred --docker-server=$REG_URL --docker-username=$REG_USERNAME --docker-password=$REG_PASSWORD --docker-email=$REG_EMAIL
 kubectl create configmap match-db-config --from-file match-db/init.sql -o=yaml
 kubectl create configmap user-db-config --from-file user-db/init.sql -o=yaml
 kubectl create configmap auth-db-config --from-file auth-db/init.sql -o=yaml
