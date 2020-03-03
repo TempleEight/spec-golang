@@ -10,6 +10,11 @@ import (
 	"net/url"
 )
 
+// Comm provides the interface adopted by Handler, allowing for mocking
+type Comm interface {
+	CreateJWTCredential() (*JWTCredential, error)
+}
+
 // Handler maintains the list of services and their associated hostnames
 type Handler struct {
 	Services map[string]string
@@ -28,8 +33,8 @@ type JWTCredential struct {
 }
 
 // Init sets up the Handler object with a list of services from the config
-func (coms *Handler) Init(config *utils.Config) {
-	coms.Services = config.Services
+func Init(config *utils.Config) *Handler {
+	return &Handler{config.Services}
 }
 
 func createKongConsumer(hostname string) (*consumerResponse, error) {

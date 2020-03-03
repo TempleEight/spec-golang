@@ -9,17 +9,19 @@ import (
 	"net/http"
 	"time"
 
-	authComm "github.com/TempleEight/spec-golang/auth/comm"
-	authDAO "github.com/TempleEight/spec-golang/auth/dao"
+	"github.com/TempleEight/spec-golang/auth/comm"
+	"github.com/TempleEight/spec-golang/auth/dao"
 	"github.com/TempleEight/spec-golang/auth/utils"
 	valid "github.com/asaskevich/govalidator"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 )
 
-var dao authDAO.DAO
-var comm authComm.Handler
-var jwtCredential *authComm.JWTCredential
+type Env struct {
+	dao           dao.Datastore
+	comm          comm.Comm
+	jwtCredential *comm.JWTCredential
+}
 
 func main() {
 	configPtr := flag.String("config", "/etc/auth-service/config.json", "configuration filepath")
@@ -33,28 +35,27 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dao = authDAO.DAO{}
-	err = dao.Init(config)
+	d, err := dao.Init(config)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	comm = authComm.Handler{}
-	comm.Init(config)
-
-	jwtCredential, err = comm.CreateJWTCredential()
+	c := comm.Init(config)
+	jwtCredential, err := c.CreateJWTCredential()
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	env := Env{d, c, jwtCredential}
 
 	r := mux.NewRouter()
-	r.HandleFunc("/auth", authCreateHandler).Methods(http.MethodPost)
-	r.HandleFunc("/auth", authReadHandler).Methods(http.MethodGet)
+	r.HandleFunc("/auth", env.authCreateHandler).Methods(http.MethodPost)
+	r.HandleFunc("/auth", env.authReadHandler).Methods(http.MethodGet)
 	log.Fatal(http.ListenAndServe(":82", r))
 }
 
-func authCreateHandler(w http.ResponseWriter, r *http.Request) {
-	var req authDAO.AuthCreateRequest
+func (env *Env) authCreateHandler(w http.ResponseWriter, r *http.Request) {
+	var req dao.AuthCreateRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
@@ -77,32 +78,32 @@ func authCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedAuth := authDAO.AuthCreateRequest{
+	hashedAuth := dao.AuthCreateRequest{
 		Email:    req.Email,
 		Password: string(hashedPassword),
 	}
-	auth, err := dao.CreateAuth(hashedAuth)
+	auth, err := env.dao.CreateAuth(hashedAuth)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
-	accessToken, err := createToken(auth.Id, jwtCredential.Key, jwtCredential.Secret)
+	accessToken, err := createToken(auth.Id, env.jwtCredential.Key, env.jwtCredential.Secret)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Could not create access token: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
-	response := authDAO.AuthCreateResponse{
+	response := dao.AuthCreateResponse{
 		AccessToken: accessToken,
 	}
 	json.NewEncoder(w).Encode(response)
 }
 
-func authReadHandler(w http.ResponseWriter, r *http.Request) {
-	var req authDAO.AuthReadRequest
+func (env *Env) authReadHandler(w http.ResponseWriter, r *http.Request) {
+	var req dao.AuthReadRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
@@ -117,10 +118,10 @@ func authReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	auth, err := dao.ReadAuth(req)
+	auth, err := env.dao.ReadAuth(req)
 	if err != nil {
 		switch err {
-		case authDAO.ErrAuthNotFound:
+		case dao.ErrAuthNotFound:
 			errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid email or password"))
 			http.Error(w, errMsg, http.StatusUnauthorized)
 		default:
@@ -137,14 +138,14 @@ func authReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessToken, err := createToken(auth.Id, jwtCredential.Key, jwtCredential.Secret)
+	accessToken, err := createToken(auth.Id, env.jwtCredential.Key, env.jwtCredential.Secret)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Could not create access token: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
-	response := authDAO.AuthReadResponse{
+	response := dao.AuthReadResponse{
 		AccessToken: accessToken,
 	}
 	json.NewEncoder(w).Encode(response)
