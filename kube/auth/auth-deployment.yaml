@@ -1,0 +1,30 @@
+# Deployment to manage auth service pods
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: auth
+  name: auth
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth
+      kind: service
+  template:
+    metadata:
+      labels:
+        app: auth
+        kind: service
+      name: auth
+    spec:
+      hostname: auth
+      containers:
+      - image: registry.lewiky.com/temple-auth-service
+        name: auth
+        ports:
+        - containerPort: 82
+      imagePullSecrets:
+        # Use the `regcred` secret to connect to the registry
+      - name: regcred
+      restartPolicy: Always

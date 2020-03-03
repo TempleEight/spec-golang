@@ -1,0 +1,52 @@
+# Deployment to manage Postgres instance pods for auth service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: auth
+  name: auth-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth
+      kind: db
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: auth
+        kind: db
+      name: auth-db
+    spec:
+      hostname: auth-db
+      containers:
+      - env:
+        - name: PGUSER
+          value: postgres
+        image: postgres:12.1
+        name: auth-db
+        volumeMounts:
+          # Mount the PV claim from the storage file
+        - mountPath: /var/lib/postgresql/data
+          name: auth-db-claim
+          # Mount the SQL script from Config Map
+        - mountPath: /docker-entrypoint-initdb.d/init.sql
+          # subPath allows mounting a single file, not a directory
+          subPath: init.sql
+          name: auth-db-init
+        lifecycle:
+          postStart:
+            exec:
+              # This pod can occasionally fail to start the first time, but still creates files
+              # This causes the init db step to be skipped, so this command manually re-runs it
+              command: ["/bin/sh", "-c", "psql -U postgres -f /docker-entrypoint-initdb.d/init.sql && echo done"]
+      restartPolicy: Always
+      volumes:
+      - name: auth-db-init
+        configMap:
+          name: auth-db-config
+      - name: auth-db-claim
+        persistentVolumeClaim:
+          claimName: auth-db-claim
