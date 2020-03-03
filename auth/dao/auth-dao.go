@@ -38,7 +38,7 @@ type AuthReadResponse struct {
 
 // Auth contains the full information persisted in the datastore
 type Auth struct {
-	Id       string
+	Id       int
 	Email    string
 	Password string
 }
