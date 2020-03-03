@@ -10,6 +10,7 @@ spec:
   selector:
     matchLabels:
       app: user
+      kind: db
   strategy:
     type: Recreate
   template:
