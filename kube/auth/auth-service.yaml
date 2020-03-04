@@ -1,0 +1,15 @@
+# Auth service that exposes the go endpoint to the cluster
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: auth
+  name: auth
+spec:
+  ports:
+  - name: "api"
+    port: 82
+    targetPort: 82
+  selector:
+    app: auth
+    kind: service
