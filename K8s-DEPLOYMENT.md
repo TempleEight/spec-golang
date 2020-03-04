@@ -1,5 +1,16 @@
 # Kubernetes Deployment
 
+## _NEW:_ Automated Deployment
+_Simply run `source deploy.sh` to do all these steps for you!_
+
+Note: When finished with the cluster, you still need to clean up with
+
+```
+$ minikube delete
+```
+
+## Manual Deployment
+
 To deploy this project onto a kubernetes cluster follow these steps:
 
 ## Cluster setup
