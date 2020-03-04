@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"github.com/TempleEight/spec-golang/user/dao"
 	"net/http"
 	"net/http/httptest"
@@ -86,16 +85,9 @@ func TestUserCreateHandlerSucceeds(t *testing.T) {
 		t.Errorf("Wrong status code %v", res.Code)
 	}
 
-	var received dao.UserUpdateResponse
-	err = json.Unmarshal([]byte(res.Body.String()), &received)
-	if err != nil {
-		t.Errorf("Could not decode body: %s", res.Body.String())
-	}
-	expected := dao.UserUpdateResponse{
-		ID:   0,
-		Name: "Jay",
-	}
-	if expected != received {
+	received := res.Body.String()
+	expected := `{"ID":0,"Name":"Jay"}`
+	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
 }
