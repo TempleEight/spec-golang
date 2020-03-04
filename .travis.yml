@@ -1,0 +1,6 @@
+sudo: required
+
+language: go
+
+script:
+  for svc in auth match user; do cd $svc && go test -v && cd ..; done

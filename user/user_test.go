@@ -96,7 +96,7 @@ func TestUserCreateHandlerSucceeds(t *testing.T) {
 		Name: "Jay",
 	}
 	if expected != received {
-		t.Errorf("Handler returned incorrect body: got %v want %v", received, expected)
+		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
 }
 
