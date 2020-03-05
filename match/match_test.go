@@ -134,8 +134,25 @@ func TestMatchCreateHandlerSucceeds(t *testing.T) {
 	}
 }
 
-// Test that a match is not created if one user doesn't exist
-func TestMatchCreateHandlerFailsOnOneInvalidUser(t *testing.T) {
+// Test that a match is not created if UserOne doesn't exist
+func TestMatchCreateHandlerFailsOnInvalidUserOne(t *testing.T) {
+	var mockEnv = Env{
+		&MockDAO{MatchList: make([]MockMatch, 0)},
+		&MockComm{UserIDs: []int{0, 1}},
+	}
+
+	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 123456, "UserTwo": 0}`)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusBadRequest {
+		t.Errorf("Wrong status code %v", res.Code)
+	}
+}
+
+// Test that a match is not created if UserTwo doesn't exist
+func TestMatchCreateHandlerFailsOnInvalidUserTwo(t *testing.T) {
 	var mockEnv = Env{
 		&MockDAO{MatchList: make([]MockMatch, 0)},
 		&MockComm{UserIDs: []int{0, 1}},
@@ -151,8 +168,8 @@ func TestMatchCreateHandlerFailsOnOneInvalidUser(t *testing.T) {
 	}
 }
 
-// Test that a match is not created if every user doesn't exist
-func TestMatchCreateHandlerFailsOnEveryUserInvalid(t *testing.T) {
+// Test that a match is not created if every reference doesn't exist
+func TestMatchCreateHandlerFailsOnAllInvalidReferences(t *testing.T) {
 	var mockEnv = Env{
 		&MockDAO{MatchList: make([]MockMatch, 0)},
 		&MockComm{UserIDs: []int{0, 1}},
