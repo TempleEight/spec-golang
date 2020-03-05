@@ -17,6 +17,17 @@ type Env struct {
 	dao dao.Datastore
 }
 
+// Router generates a router for this service
+func Router(env Env) *mux.Router {
+	r := mux.NewRouter()
+	r.HandleFunc("/user", env.userCreateHandler).Methods(http.MethodPost)
+	r.HandleFunc("/user/{id}", env.userReadHandler).Methods(http.MethodGet)
+	r.HandleFunc("/user/{id}", env.userUpdateHandler).Methods(http.MethodPut)
+	r.HandleFunc("/user/{id}", env.userDeleteHandler).Methods(http.MethodDelete)
+	r.Use(jsonMiddleware)
+	return r
+}
+
 func main() {
 	configPtr := flag.String("config", "/etc/user-service/config.json", "configuration filepath")
 	flag.Parse()
@@ -35,14 +46,7 @@ func main() {
 	}
 	env := Env{d}
 
-	r := mux.NewRouter()
-	r.HandleFunc("/user", env.userCreateHandler).Methods(http.MethodPost)
-	r.HandleFunc("/user/{id}", env.userReadHandler).Methods(http.MethodGet)
-	r.HandleFunc("/user/{id}", env.userUpdateHandler).Methods(http.MethodPut)
-	r.HandleFunc("/user/{id}", env.userDeleteHandler).Methods(http.MethodDelete)
-	r.Use(jsonMiddleware)
-
-	log.Fatal(http.ListenAndServe(":80", r))
+	log.Fatal(http.ListenAndServe(":80", Router(env)))
 }
 
 func jsonMiddleware(next http.Handler) http.Handler {
