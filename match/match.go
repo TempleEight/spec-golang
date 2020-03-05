@@ -51,8 +51,7 @@ func main() {
 
 	env := Env{d, c}
 
-	r := Router(env)
-	log.Fatal(http.ListenAndServe(":81", r))
+	log.Fatal(http.ListenAndServe(":81", Router(env)))
 }
 
 func jsonMiddleware(next http.Handler) http.Handler {
