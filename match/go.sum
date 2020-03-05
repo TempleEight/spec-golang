@@ -1,5 +1,3 @@
-github.com/TempleEight/spec-golang v0.0.0-20200227165252-9574c524194e h1:Dv4sjHiXFESTRiK7WMwMP+l2IN6bKMjSBiQqCzeSdX8=
-github.com/TempleEight/spec-golang v0.0.0-20200228102702-c2ae87ea10e5 h1:Ufn8c3c8oJUZenp4pM+0KBF7d1CFwjo2OV+LfSXKbgE=
 github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496 h1:zV3ejI06GQ59hwDQAvmK1qxOQGB3WuVTRoY0okPTAv0=
 github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496/go.mod h1:oGkLhpf+kjZl6xBf758TQhh5XrAeiJv/7FRz/2spLIg=
 github.com/gorilla/mux v1.7.4 h1:VuZ8uybHlWmqV03+zRzdwKL4tUnIp1MAQtp1mIFE1bc=
