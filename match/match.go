@@ -19,6 +19,18 @@ type Env struct {
 	comm comm.Comm
 }
 
+func Router(env Env) *mux.Router {
+	r := mux.NewRouter()
+	// Mux directs to first matching route, i.e. the order matters
+	r.HandleFunc("/match/all", env.matchListHandler).Methods(http.MethodGet)
+	r.HandleFunc("/match", env.matchCreateHandler).Methods(http.MethodPost)
+	r.HandleFunc("/match/{id}", env.matchReadHandler).Methods(http.MethodGet)
+	r.HandleFunc("/match/{id}", env.matchUpdateHandler).Methods(http.MethodPut)
+	r.HandleFunc("/match/{id}", env.matchDeleteHandler).Methods(http.MethodDelete)
+	r.Use(jsonMiddleware)
+	return r
+}
+
 func main() {
 	configPtr := flag.String("config", "/etc/match-service/config.json", "configuration filepath")
 	flag.Parse()
@@ -39,16 +51,7 @@ func main() {
 
 	env := Env{d, c}
 
-	r := mux.NewRouter()
-	// Mux directs to first matching route, i.e. the order matters
-	r.HandleFunc("/match/all", env.matchListHandler).Methods(http.MethodGet)
-	r.HandleFunc("/match", env.matchCreateHandler).Methods(http.MethodPost)
-	r.HandleFunc("/match/{id}", env.matchReadHandler).Methods(http.MethodGet)
-	r.HandleFunc("/match/{id}", env.matchUpdateHandler).Methods(http.MethodPut)
-	r.HandleFunc("/match/{id}", env.matchDeleteHandler).Methods(http.MethodDelete)
-	r.Use(jsonMiddleware)
-
-	log.Fatal(http.ListenAndServe(":81", r))
+	log.Fatal(http.ListenAndServe(":81", Router(env)))
 }
 
 func jsonMiddleware(next http.Handler) http.Handler {
