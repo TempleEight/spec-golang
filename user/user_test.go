@@ -280,7 +280,6 @@ func TestUserUpdateHandlerFailsOnInvalidRequestBody(t *testing.T) {
 	if res.Code != http.StatusBadRequest {
 		t.Errorf("Wrong status code %v", res.Code)
 	}
-
 }
 
 // Test that providing no ID to the update endpoint fails
@@ -317,7 +316,7 @@ func TestUserUpdateHandlerFailsOnNonExistentID(t *testing.T) {
 	}
 }
 
-// // Test that providing a string as ID to the update endpoint fails
+// Test that providing a string as ID to the update endpoint fails
 func TestUserUpdateHandlerFailsOnStringID(t *testing.T) {
 	var mockEnv = Env{
 		&MockDAO{Users: make([]MockUser, 0)},
