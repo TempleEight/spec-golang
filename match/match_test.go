@@ -25,9 +25,9 @@ type MockComm struct {
 }
 
 func (md *MockDAO) ListMatch() (*dao.MatchListResponse, error) {
-	matches := make([]dao.MatchReadResponse, 0)
+	matchList := make([]dao.MatchReadResponse, 0)
 	for _, match := range md.MatchList {
-		matches = append(matches, dao.MatchReadResponse{
+		matchList = append(matchList, dao.MatchReadResponse{
 			ID:        match.ID,
 			UserOne:   match.UserOne,
 			UserTwo:   match.UserTwo,
@@ -36,7 +36,7 @@ func (md *MockDAO) ListMatch() (*dao.MatchListResponse, error) {
 	}
 
 	return &dao.MatchListResponse{
-		MatchList: matches,
+		MatchList: matchList,
 	}, nil
 }
 
