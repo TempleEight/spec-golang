@@ -8,7 +8,6 @@ import (
 	"github.com/TempleEight/spec-golang/auth/utils"
 	// pq acts as the driver for SQL requests
 	"github.com/lib/pq"
-	_ "github.com/lib/pq"
 )
 
 // https://www.postgresql.org/docs/9.3/errcodes-appendix.html
