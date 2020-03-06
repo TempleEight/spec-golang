@@ -25,10 +25,17 @@ type MockDAO struct {
 type MockComm struct{}
 
 func (md *MockDAO) CreateAuth(request dao.AuthCreateRequest) (*dao.Auth, error) {
+	// Check if user already exists
+	for _, auth := range md.AuthList {
+		if auth.Email == request.Email {
+			return nil, dao.ErrDuplicateAuth
+		}
+	}
+
 	mockAuth := MockAuth{len(md.AuthList), request.Email, request.Password}
 	md.AuthList = append(md.AuthList, mockAuth)
 	return &dao.Auth{
-		Id:       mockAuth.ID,
+		ID:       mockAuth.ID,
 		Email:    mockAuth.Email,
 		Password: mockAuth.Password,
 	}, nil
@@ -38,7 +45,7 @@ func (md *MockDAO) ReadAuth(request dao.AuthReadRequest) (*dao.Auth, error) {
 	for _, auth := range md.AuthList {
 		if auth.Email == request.Email {
 			return &dao.Auth{
-				Id:       auth.ID,
+				ID:       auth.ID,
 				Email:    auth.Email,
 				Password: auth.Password,
 			}, nil
@@ -121,6 +128,33 @@ func TestAuthCreateHandlerSucceeds(t *testing.T) {
 
 	if iss.(string) != cred.Key {
 		t.Fatalf("iss is incorrect: found %v, wanted: %s", iss, cred.Key)
+	}
+}
+
+// Test that repeating the same request causes a `StatusForbidden`
+func TestAuthCreateHandlerFailsOnDuplicate(t *testing.T) {
+	mockComm := MockComm{}
+	cred, _ := mockComm.CreateJWTCredential()
+	mockEnv := Env{
+		&MockDAO{AuthList: make([]MockAuth, 0)},
+		&mockComm,
+		cred,
+	}
+
+	// Make first request
+	_, err := makeRequest(mockEnv, http.MethodPost, "/auth", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Make repeat first request
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusForbidden {
+		t.Fatalf("Invalid response code: %d", res.Code)
 	}
 }
 

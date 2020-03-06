@@ -89,12 +89,17 @@ func (env *Env) authCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	auth, err := env.dao.CreateAuth(hashedAuth)
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
+		switch err {
+		case dao.ErrDuplicateAuth:
+			http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusForbidden)
+		default:
+			errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			http.Error(w, errMsg, http.StatusInternalServerError)
+		}
 		return
 	}
 
-	accessToken, err := createToken(auth.Id, env.jwtCredential.Key, env.jwtCredential.Secret)
+	accessToken, err := createToken(auth.ID, env.jwtCredential.Key, env.jwtCredential.Secret)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Could not create access token: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
@@ -143,7 +148,7 @@ func (env *Env) authReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessToken, err := createToken(auth.Id, env.jwtCredential.Key, env.jwtCredential.Secret)
+	accessToken, err := createToken(auth.ID, env.jwtCredential.Key, env.jwtCredential.Secret)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Could not create access token: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)

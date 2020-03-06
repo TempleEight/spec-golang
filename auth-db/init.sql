@@ -1,5 +1,5 @@
 CREATE TABLE auth (
     id SERIAL PRIMARY KEY,
-    email TEXT,
+    email TEXT UNIQUE,
     password TEXT
 );

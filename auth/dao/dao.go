@@ -6,8 +6,11 @@ import (
 
 	"github.com/TempleEight/spec-golang/auth/utils"
 	// pq acts as the driver for SQL requests
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 )
+
+// https://www.postgresql.org/docs/9.3/errcodes-appendix.html
+const psqlUniqueViolation = "unique_violation"
 
 // Datastore provides the interface adopted by the DAO, allowing for mocking
 type Datastore interface {
@@ -44,7 +47,7 @@ type AuthReadResponse struct {
 
 // Auth contains the full information persisted in the datastore
 type Auth struct {
-	Id       int
+	ID       int
 	Email    string
 	Password string
 }
@@ -78,14 +81,15 @@ func executeQueryWithRowResponse(db *sql.DB, query string, args ...interface{}) 
 func (dao *DAO) CreateAuth(request AuthCreateRequest) (*Auth, error) {
 	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO auth (email, password) VALUES ($1, $2) RETURNING *", request.Email, request.Password)
 	var auth Auth
-	err := row.Scan(&auth.Id, &auth.Email, &auth.Password)
+	err := row.Scan(&auth.ID, &auth.Email, &auth.Password)
 	if err != nil {
-		switch err {
-		case sql.ErrNoRows:
-			return nil, ErrAuthNotFound
-		default:
-			return nil, err
+		// PQ specific error
+		if err, ok := err.(*pq.Error); ok {
+			if err.Code.Name() == psqlUniqueViolation {
+				return nil, ErrDuplicateAuth
+			}
 		}
+		return nil, err
 	}
 
 	return &auth, nil
@@ -95,7 +99,7 @@ func (dao *DAO) CreateAuth(request AuthCreateRequest) (*Auth, error) {
 func (dao *DAO) ReadAuth(request AuthReadRequest) (*Auth, error) {
 	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM auth WHERE email = $1", request.Email)
 	var auth Auth
-	err := row.Scan(&auth.Id, &auth.Email, &auth.Password)
+	err := row.Scan(&auth.ID, &auth.Email, &auth.Password)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
