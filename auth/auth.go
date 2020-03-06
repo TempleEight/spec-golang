@@ -23,6 +23,13 @@ type Env struct {
 	jwtCredential *comm.JWTCredential
 }
 
+func Router(env Env) *mux.Router {
+	r := mux.NewRouter()
+	r.HandleFunc("/auth", env.authCreateHandler).Methods(http.MethodPost)
+	r.HandleFunc("/auth", env.authReadHandler).Methods(http.MethodGet)
+	return r
+}
+
 func main() {
 	configPtr := flag.String("config", "/etc/auth-service/config.json", "configuration filepath")
 	flag.Parse()
@@ -48,10 +55,7 @@ func main() {
 
 	env := Env{d, c, jwtCredential}
 
-	r := mux.NewRouter()
-	r.HandleFunc("/auth", env.authCreateHandler).Methods(http.MethodPost)
-	r.HandleFunc("/auth", env.authReadHandler).Methods(http.MethodGet)
-	log.Fatal(http.ListenAndServe(":82", r))
+	log.Fatal(http.ListenAndServe(":82", Router(env)))
 }
 
 func (env *Env) authCreateHandler(w http.ResponseWriter, r *http.Request) {
