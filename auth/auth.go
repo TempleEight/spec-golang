@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"golang.org/x/crypto/bcrypt"
 	"log"
 	"net/http"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/TempleEight/spec-golang/auth/comm"
 	"github.com/TempleEight/spec-golang/auth/dao"
