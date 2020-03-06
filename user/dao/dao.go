@@ -28,23 +28,23 @@ type User struct {
 	Name string
 }
 
-// CreateUserInput encapsulates the information required to create a user
+// CreateUserInput encapsulates the information required to create a single user
 type CreateUserInput struct {
 	Name string
 }
 
-// ReadUserInput encapsulates the information required to read a user
+// ReadUserInput encapsulates the information required to read a single user
 type ReadUserInput struct {
 	ID int64
 }
 
-// UpdateUserInput encapsulates the information required to update a user
+// UpdateUserInput encapsulates the information required to update a single user
 type UpdateUserInput struct {
 	ID   int64
 	Name string
 }
 
-// DeleteUserInput encapsulates the information required to delete a user
+// DeleteUserInput encapsulates the information required to delete a single user
 type DeleteUserInput struct {
 	ID int64
 }
