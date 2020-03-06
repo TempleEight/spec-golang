@@ -11,10 +11,10 @@ import (
 
 // Datastore provides the interface adopted by the DAO, allowing for mocking
 type Datastore interface {
-	CreateUser(request UserCreateRequest) (*UserCreateResponse, error)
-	ReadUser(userID int64) (*UserReadResponse, error)
-	UpdateUser(userID int64, request UserUpdateRequest) (*UserUpdateResponse, error)
-	DeleteUser(userID int64) error
+	CreateUser(input CreateUserInput) (*User, error)
+	ReadUser(input ReadUserInput) (*User, error)
+	UpdateUser(input UpdateUserInput) (*User, error)
+	DeleteUser(input DeleteUserInput) error
 }
 
 // DAO encapsulates access to the database
@@ -22,32 +22,31 @@ type DAO struct {
 	DB *sql.DB
 }
 
-// UserCreateRequest contains the information required to create a new user
-type UserCreateRequest struct {
-	Name string `valid:"type(string),required,stringlength(2|255)"`
-}
-
-// UserUpdateRequest contains all the information about an existing user
-type UserUpdateRequest struct {
-	Name string `valid:"type(string),required,stringlength(2|255)"`
-}
-
-// UserCreateResponse contains the information about the newly created user
-type UserCreateResponse struct {
-	ID   int
+// User encapsulates the object stored in the datastore
+type User struct {
+	ID   int64
 	Name string
 }
 
-// UserReadResponse returns all the information stored about a user
-type UserReadResponse struct {
-	ID   int
+// CreateUserInput encapsulates the information required to create a user
+type CreateUserInput struct {
 	Name string
 }
 
-// UserUpdateResponse contains the information about the newly updated user
-type UserUpdateResponse struct {
-	ID   int
+// ReadUserInput encapsulates the information required to read a user
+type ReadUserInput struct {
+	ID int64
+}
+
+// UpdateUserInput encapsulates the information required to update a user
+type UpdateUserInput struct {
+	ID   int64
 	Name string
+}
+
+// DeleteUserInput encapsulates the information required to delete a user
+type DeleteUserInput struct {
+	ID int64
 }
 
 // Executes the query, returning the row
@@ -76,10 +75,10 @@ func Init(config *util.Config) (*DAO, error) {
 }
 
 // CreateUser creates a new user in the database, returning the newly created user
-func (dao *DAO) CreateUser(request UserCreateRequest) (*UserCreateResponse, error) {
-	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO User_Temple (name) VALUES ($1) RETURNING *", request.Name)
+func (dao *DAO) CreateUser(input CreateUserInput) (*User, error) {
+	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO User_Temple (name) VALUES ($1) RETURNING *", input.Name)
 
-	var resp UserCreateResponse
+	var resp User
 	err := row.Scan(&resp.ID, &resp.Name)
 	if err != nil {
 		return nil, err
@@ -89,15 +88,15 @@ func (dao *DAO) CreateUser(request UserCreateRequest) (*UserCreateResponse, erro
 }
 
 // ReadUser returns the information about a user stored for a given ID
-func (dao *DAO) ReadUser(userID int64) (*UserReadResponse, error) {
-	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM User_Temple WHERE id = $1", userID)
+func (dao *DAO) ReadUser(input ReadUserInput) (*User, error) {
+	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM User_Temple WHERE id = $1", input.ID)
 
-	var resp UserReadResponse
+	var resp User
 	err := row.Scan(&resp.ID, &resp.Name)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			return nil, ErrUserNotFound(userID)
+			return nil, ErrUserNotFound(input.ID)
 		default:
 			return nil, err
 		}
@@ -107,15 +106,15 @@ func (dao *DAO) ReadUser(userID int64) (*UserReadResponse, error) {
 }
 
 // UpdateUser updates a user in the database, returning an error if it fails
-func (dao *DAO) UpdateUser(userID int64, request UserUpdateRequest) (*UserUpdateResponse, error) {
-	row := executeQueryWithRowResponse(dao.DB, "UPDATE User_Temple set Name = $1 WHERE Id = $2 RETURNING *", request.Name, userID)
+func (dao *DAO) UpdateUser(input UpdateUserInput) (*User, error) {
+	row := executeQueryWithRowResponse(dao.DB, "UPDATE User_Temple set Name = $1 WHERE Id = $2 RETURNING *", input.Name, input.ID)
 
-	var resp UserUpdateResponse
+	var resp User
 	err := row.Scan(&resp.ID, &resp.Name)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			return nil, ErrUserNotFound(userID)
+			return nil, ErrUserNotFound(input.ID)
 		default:
 			return nil, err
 		}
@@ -125,12 +124,12 @@ func (dao *DAO) UpdateUser(userID int64, request UserUpdateRequest) (*UserUpdate
 }
 
 // DeleteUser deletes a user in the database, returning an error if it fails or the user doesn't exist
-func (dao *DAO) DeleteUser(userID int64) error {
-	rowsAffected, err := executeQuery(dao.DB, "DELETE FROM User_Temple WHERE Id = $1", userID)
+func (dao *DAO) DeleteUser(input DeleteUserInput) error {
+	rowsAffected, err := executeQuery(dao.DB, "DELETE FROM User_Temple WHERE Id = $1", input.ID)
 	if err != nil {
 		return err
 	} else if rowsAffected == 0 {
-		return ErrUserNotFound(userID)
+		return ErrUserNotFound(input.ID)
 	}
 
 	return nil
