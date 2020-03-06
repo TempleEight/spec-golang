@@ -3,7 +3,6 @@ package dao
 import (
 	"database/sql"
 	"fmt"
-	"log"
 
 	"github.com/TempleEight/spec-golang/auth/utils"
 	// pq acts as the driver for SQL requests
@@ -11,7 +10,7 @@ import (
 )
 
 // https://www.postgresql.org/docs/9.3/errcodes-appendix.html
-const psqlDuplicateKey = "23505"
+const psqlUniqueViolation = "unique_violation"
 
 // Datastore provides the interface adopted by the DAO, allowing for mocking
 type Datastore interface {
@@ -86,7 +85,7 @@ func (dao *DAO) CreateAuth(request AuthCreateRequest) (*Auth, error) {
 	if err != nil {
 		// PQ specific error
 		if err, ok := err.(*pq.Error); ok {
-			if err.Code == psqlDuplicateKey {
+			if err.Code.Name() == psqlUniqueViolation {
 				return nil, ErrDuplicateAuth
 			}
 		}
