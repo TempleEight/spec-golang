@@ -86,7 +86,6 @@ func (dao *DAO) CreateAuth(request AuthCreateRequest) (*Auth, error) {
 	if err != nil {
 		// PQ specific error
 		if err, ok := err.(*pq.Error); ok {
-			log.Printf("%s", err.Code)
 			if err.Code == psqlDuplicateKey {
 				return nil, ErrDuplicateAuth
 			}
