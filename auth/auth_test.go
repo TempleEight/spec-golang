@@ -124,7 +124,7 @@ func TestAuthCreateHandlerSucceeds(t *testing.T) {
 	}
 }
 
-// Test that providing an empty value for the `Email` parameter causes a `StatusBadRequest`
+// Test that providing an empty value for the `email` parameter causes a `StatusBadRequest`
 func TestAuthCreateHandlerFailsOnEmptyParameter(t *testing.T) {
 	mockComm := MockComm{}
 	cred, _ := mockComm.CreateJWTCredential()
@@ -230,7 +230,7 @@ func TestAuthReadHandlerSucceeds(t *testing.T) {
 	}
 }
 
-// Test that providing an empty parameter to the read endpoint fails
+// Test that providing an empty value for the `email` parameter causes a `StatusBadRequest`
 func TestAuthReadHandlerFailsOnEmptyParameter(t *testing.T) {
 	mockComm := MockComm{}
 	cred, _ := mockComm.CreateJWTCredential()
@@ -251,7 +251,7 @@ func TestAuthReadHandlerFailsOnEmptyParameter(t *testing.T) {
 	}
 }
 
-// Test that looking up an auth that doesn't exist fails
+// Test that providing an auth that doesn't exist causes a `StatusUnauthorized`
 func TestAuthReadHandlerFailsOnNonExistentAuth(t *testing.T) {
 	mockComm := MockComm{}
 	cred, _ := mockComm.CreateJWTCredential()
@@ -271,7 +271,7 @@ func TestAuthReadHandlerFailsOnNonExistentAuth(t *testing.T) {
 	}
 }
 
-// Test that providing an invalid json body to the read endpoint fails
+// Test that providing an invalid json body causes a `StatusBadRequest`
 func TestAuthReadHandlerFailsOnMalformedJSON(t *testing.T) {
 	mockComm := MockComm{}
 	cred, _ := mockComm.CreateJWTCredential()
