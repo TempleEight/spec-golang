@@ -18,16 +18,39 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type Env struct {
+// env defines the environment that requests should be executed within
+type env struct {
 	dao           dao.Datastore
 	comm          comm.Comm
 	jwtCredential *comm.JWTCredential
 }
 
-func Router(env Env) *mux.Router {
+// createAuthRequest contains the information required to create a new auth
+type createAuthRequest struct {
+	Email    string `valid:"email,required"`
+	Password string `valid:"type(string),required,stringlength(8|64)"`
+}
+
+// readAuthRequest contains the information required to validate an existing auth
+type readAuthRequest struct {
+	Email    string `valid:"email,required"`
+	Password string `valid:"type(string),required,stringlength(8|64)"`
+}
+
+// createAuthResponse contains an access token
+type createAuthResponse struct {
+	AccessToken string
+}
+
+// readAuthResponse contains an access token
+type readAuthResponse struct {
+	AccessToken string
+}
+
+func (env *env) router() *mux.Router {
 	r := mux.NewRouter()
-	r.HandleFunc("/auth", env.authCreateHandler).Methods(http.MethodPost)
-	r.HandleFunc("/auth", env.authReadHandler).Methods(http.MethodGet)
+	r.HandleFunc("/auth", env.createAuthHandler).Methods(http.MethodPost)
+	r.HandleFunc("/auth", env.readAuthHandler).Methods(http.MethodGet)
 	return r
 }
 
@@ -54,13 +77,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	env := Env{d, c, jwtCredential}
+	env := env{d, c, jwtCredential}
 
-	log.Fatal(http.ListenAndServe(":82", Router(env)))
+	log.Fatal(http.ListenAndServe(":82", env.router()))
 }
 
-func (env *Env) authCreateHandler(w http.ResponseWriter, r *http.Request) {
-	var req dao.AuthCreateRequest
+func (env *env) createAuthHandler(w http.ResponseWriter, r *http.Request) {
+	var req createAuthRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
@@ -83,11 +106,10 @@ func (env *Env) authCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedAuth := dao.AuthCreateRequest{
+	auth, err := env.dao.CreateAuth(dao.CreateAuthInput{
 		Email:    req.Email,
 		Password: string(hashedPassword),
-	}
-	auth, err := env.dao.CreateAuth(hashedAuth)
+	})
 	if err != nil {
 		switch err {
 		case dao.ErrDuplicateAuth:
@@ -106,14 +128,13 @@ func (env *Env) authCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := dao.AuthCreateResponse{
+	json.NewEncoder(w).Encode(createAuthResponse{
 		AccessToken: accessToken,
-	}
-	json.NewEncoder(w).Encode(response)
+	})
 }
 
-func (env *Env) authReadHandler(w http.ResponseWriter, r *http.Request) {
-	var req dao.AuthReadRequest
+func (env *env) readAuthHandler(w http.ResponseWriter, r *http.Request) {
+	var req readAuthRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
@@ -128,7 +149,9 @@ func (env *Env) authReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	auth, err := env.dao.ReadAuth(req)
+	auth, err := env.dao.ReadAuth(dao.ReadAuthInput{
+		Email: req.Email,
+	})
 	if err != nil {
 		switch err {
 		case dao.ErrAuthNotFound:
@@ -155,10 +178,9 @@ func (env *Env) authReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := dao.AuthReadResponse{
+	json.NewEncoder(w).Encode(readAuthResponse{
 		AccessToken: accessToken,
-	}
-	json.NewEncoder(w).Encode(response)
+	})
 }
 
 // Create an access token with a 24 hour lifetime

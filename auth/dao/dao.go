@@ -14,8 +14,8 @@ const psqlUniqueViolation = "unique_violation"
 
 // Datastore provides the interface adopted by the DAO, allowing for mocking
 type Datastore interface {
-	CreateAuth(request AuthCreateRequest) (*Auth, error)
-	ReadAuth(request AuthReadRequest) (*Auth, error)
+	CreateAuth(input CreateAuthInput) (*Auth, error)
+	ReadAuth(input ReadAuthInput) (*Auth, error)
 }
 
 // DAO encapsulates access to the database
@@ -23,33 +23,22 @@ type DAO struct {
 	DB *sql.DB
 }
 
-// AuthCreateRequest contains the information retrieved from an end user to create a new auth
-type AuthCreateRequest struct {
-	Email    string `valid:"email,required"`
-	Password string `valid:"type(string),required,stringlength(8|64)"`
-}
-
-// AuthReadRequest contains the information retrieved from an end user to validate an existing auth
-type AuthReadRequest struct {
-	Email    string `valid:"email,required"`
-	Password string `valid:"type(string),required,stringlength(8|64)"`
-}
-
-// AuthCreateResponse contains an access token associated to a given auth
-type AuthCreateResponse struct {
-	AccessToken string
-}
-
-// AuthReadResponse contains an access token associated to a given auth
-type AuthReadResponse struct {
-	AccessToken string
-}
-
 // Auth contains the full information persisted in the datastore
 type Auth struct {
 	ID       int
 	Email    string
 	Password string
+}
+
+// CreateAuthInput encapsulates the information required to create a single auth
+type CreateAuthInput struct {
+	Email    string
+	Password string
+}
+
+// ReadAuthInput encapsulates the information required to read a single auth
+type ReadAuthInput struct {
+	Email string
 }
 
 // Init constructs a DAO from a configuration file
@@ -77,9 +66,9 @@ func executeQueryWithRowResponse(db *sql.DB, query string, args ...interface{}) 
 	return db.QueryRow(query, args...)
 }
 
-// CreateAuth persists a new auth'd user to the data store
-func (dao *DAO) CreateAuth(request AuthCreateRequest) (*Auth, error) {
-	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO auth (email, password) VALUES ($1, $2) RETURNING *", request.Email, request.Password)
+// CreateAuth creates a single auth in the database, returning the auth
+func (dao *DAO) CreateAuth(input CreateAuthInput) (*Auth, error) {
+	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO auth (email, password) VALUES ($1, $2) RETURNING *", input.Email, input.Password)
 	var auth Auth
 	err := row.Scan(&auth.ID, &auth.Email, &auth.Password)
 	if err != nil {
@@ -95,9 +84,9 @@ func (dao *DAO) CreateAuth(request AuthCreateRequest) (*Auth, error) {
 	return &auth, nil
 }
 
-// ReadAuth attempts to find an existing auth'd user in the data store
-func (dao *DAO) ReadAuth(request AuthReadRequest) (*Auth, error) {
-	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM auth WHERE email = $1", request.Email)
+// ReadAuth returns the information stored about a single auth
+func (dao *DAO) ReadAuth(input ReadAuthInput) (*Auth, error) {
+	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM auth WHERE email = $1", input.Email)
 	var auth Auth
 	err := row.Scan(&auth.ID, &auth.Email, &auth.Password)
 	if err != nil {
