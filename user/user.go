@@ -13,45 +13,46 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// env defines the environment that requests should be executed within
 type env struct {
 	dao dao.Datastore
 }
 
-// UserCreateRequest contains the information required to create a new user
-type userCreateRequest struct {
+// createUserRequest contains the information required to create a new user
+type createUserRequest struct {
 	Name string `valid:"type(string),required,stringlength(2|255)"`
 }
 
-// UserUpdateRequest contains all the information about an existing user
-type userUpdateRequest struct {
+// updateUserRequest contains all the information about an existing user
+type updateUserRequest struct {
 	Name string `valid:"type(string),required,stringlength(2|255)"`
 }
 
-// UserCreateResponse contains the information about the newly created user
-type userCreateResponse struct {
+// createUserResponse contains the information about the newly created user
+type createUserResponse struct {
 	ID   int64
 	Name string
 }
 
-// UserReadResponse returns all the information stored about a user
-type userReadResponse struct {
+// readUserResponse returns all the information stored about a user
+type readUserResponse struct {
 	ID   int64
 	Name string
 }
 
-// UserUpdateResponse contains the information about the newly updated user
-type userUpdateResponse struct {
+// updateUserResponse contains the information about the newly updated user
+type updateUserResponse struct {
 	ID   int64
 	Name string
 }
 
-// Router generates a router for this service
+// router generates a router for this service
 func (env *env) router() *mux.Router {
 	r := mux.NewRouter()
-	r.HandleFunc("/user", env.userCreateHandler).Methods(http.MethodPost)
-	r.HandleFunc("/user/{id}", env.userReadHandler).Methods(http.MethodGet)
-	r.HandleFunc("/user/{id}", env.userUpdateHandler).Methods(http.MethodPut)
-	r.HandleFunc("/user/{id}", env.userDeleteHandler).Methods(http.MethodDelete)
+	r.HandleFunc("/user", env.createUserHandler).Methods(http.MethodPost)
+	r.HandleFunc("/user/{id}", env.readUserHandler).Methods(http.MethodGet)
+	r.HandleFunc("/user/{id}", env.updateUserHandler).Methods(http.MethodPut)
+	r.HandleFunc("/user/{id}", env.deleteUserHandler).Methods(http.MethodDelete)
 	r.Use(jsonMiddleware)
 	return r
 }
@@ -85,8 +86,8 @@ func jsonMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func (env *env) userCreateHandler(w http.ResponseWriter, r *http.Request) {
-	var req userCreateRequest
+func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
+	var req createUserRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
@@ -109,13 +110,13 @@ func (env *env) userCreateHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(userCreateResponse{
+	json.NewEncoder(w).Encode(createUserResponse{
 		ID:   resp.ID,
 		Name: resp.Name,
 	})
 }
 
-func (env *env) userReadHandler(w http.ResponseWriter, r *http.Request) {
+func (env *env) readUserHandler(w http.ResponseWriter, r *http.Request) {
 	userID, err := util.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
 		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
@@ -135,20 +136,20 @@ func (env *env) userReadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	json.NewEncoder(w).Encode(userReadResponse{
+	json.NewEncoder(w).Encode(readUserResponse{
 		ID:   user.ID,
 		Name: user.Name,
 	})
 }
 
-func (env *env) userUpdateHandler(w http.ResponseWriter, r *http.Request) {
+func (env *env) updateUserHandler(w http.ResponseWriter, r *http.Request) {
 	userID, err := util.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
 		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
 		return
 	}
 
-	var req userUpdateRequest
+	var req updateUserRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
@@ -178,13 +179,13 @@ func (env *env) userUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(userUpdateResponse{
+	json.NewEncoder(w).Encode(updateUserResponse{
 		ID:   resp.ID,
 		Name: resp.Name,
 	})
 }
 
-func (env *env) userDeleteHandler(w http.ResponseWriter, r *http.Request) {
+func (env *env) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	userID, err := util.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
 		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
