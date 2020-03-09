@@ -87,8 +87,15 @@ func jsonMiddleware(next http.Handler) http.Handler {
 }
 
 func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
 	var req createUserRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
+	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
@@ -102,21 +109,30 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := env.dao.CreateUser(dao.CreateUserInput{
-		Name: req.Name,
+	user, err := env.dao.CreateUser(dao.CreateUserInput{
+		AuthID: auth.ID,
+		Name:   req.Name,
 	})
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
+
 	json.NewEncoder(w).Encode(createUserResponse{
-		ID:   resp.ID,
-		Name: resp.Name,
+		ID:   user.ID,
+		Name: user.Name,
 	})
 }
 
 func (env *env) readUserHandler(w http.ResponseWriter, r *http.Request) {
+	_, err := util.ExtractAuthIDFromRequest(r.Header)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
 	userID, err := util.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
 		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
@@ -136,6 +152,7 @@ func (env *env) readUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
 	json.NewEncoder(w).Encode(readUserResponse{
 		ID:   user.ID,
 		Name: user.Name,
@@ -143,9 +160,23 @@ func (env *env) readUserHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (env *env) updateUserHandler(w http.ResponseWriter, r *http.Request) {
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
 	userID, err := util.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
 		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	// Only the auth that created the user can update it
+	if auth.ID != userID {
+		errMsg := util.CreateErrorJSON("Not authorized to make request")
+		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
 	}
 
@@ -186,9 +217,23 @@ func (env *env) updateUserHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (env *env) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
 	userID, err := util.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
 		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	// Only the auth that created the user can delete it
+	if auth.ID != userID {
+		errMsg := util.CreateErrorJSON("Not authorized to make request")
+		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
 	}
 
@@ -205,5 +250,6 @@ func (env *env) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
 	json.NewEncoder(w).Encode(struct{}{})
 }
