@@ -11,11 +11,11 @@ import (
 
 // Datastore provides the interface adopted by the DAO, allowing for mocking
 type Datastore interface {
-	ListMatch() (*MatchListResponse, error)
-	CreateMatch(request MatchCreateRequest) (*MatchCreateResponse, error)
-	ReadMatch(matchID int64) (*MatchReadResponse, error)
-	UpdateMatch(matchID int64, request MatchUpdateRequest) (*MatchUpdateResponse, error)
-	DeleteMatch(matchID int64) error
+	ListMatch() (*[]Match, error)
+	CreateMatch(input CreateMatchInput) (*Match, error)
+	ReadMatch(input ReadMatchInput) (*Match, error)
+	UpdateMatch(input UpdateMatchInput) (*Match, error)
+	DeleteMatch(input DeleteMatchInput) error
 }
 
 // DAO encapsulates access to the database
@@ -23,55 +23,46 @@ type DAO struct {
 	DB *sql.DB
 }
 
-// MatchCreateRequest contains the information required to create a new match
-type MatchCreateRequest struct {
-	UserOne *int `valid:"-"`
-	UserTwo *int `valid:"-"`
-}
-
-// MatchUpdateRequest contains the information required to update a match
-type MatchUpdateRequest struct {
-	UserOne *int `valid:"-"`
-	UserTwo *int `valid:"-"`
-}
-
-// MatchListResponse contains the information stored about all matches
-type MatchListResponse struct {
-	MatchList []MatchReadResponse
-}
-
-// MatchCreateResponse contains the information about the newly created match
-type MatchCreateResponse struct {
-	ID        int
-	UserOne   int
-	UserTwo   int
+// Match encapsulates the object stored in the datastore
+type Match struct {
+	ID        int64
+	UserOne   int64
+	UserTwo   int64
 	MatchedOn string
 }
 
-// MatchReadResponse contains the information stored about a given match
-type MatchReadResponse struct {
-	ID        int
-	UserOne   int
-	UserTwo   int
-	MatchedOn string
+// CreateMatchInput encapsulates the information required to create a single match
+type CreateMatchInput struct {
+	UserOne int64
+	UserTwo int64
 }
 
-// MatchUpdateResponse contains the information about the newly updated match
-type MatchUpdateResponse struct {
-	ID        int
-	UserOne   int
-	UserTwo   int
-	MatchedOn string
+// ReadMatchInput encapsulates the information required to read a single match
+type ReadMatchInput struct {
+	ID int64
 }
 
-// Executes the query, returning the rows
-func executeQueryWithResponses(db *sql.DB, query string, args ...interface{}) (*sql.Rows, error) {
-	return db.Query(query, args...)
+// UpdateMatchInput encapsulates the information required to update a single match
+type UpdateMatchInput struct {
+	ID      int64
+	UserOne int64
+	UserTwo int64
 }
 
-// Executes the query, returning the row
-func executeQueryWithRowResponse(db *sql.DB, query string, args ...interface{}) *sql.Row {
-	return db.QueryRow(query, args...)
+// DeleteMatchInput encapsulates the information required to delete a single match
+type DeleteMatchInput struct {
+	ID int64
+}
+
+// Init opens the database connection, returning a DAO
+func Init(config *util.Config) (*DAO, error) {
+	connStr := fmt.Sprintf("user=%s dbname=%s host=%s sslmode=%s", config.User, config.DBName, config.Host, config.SSLMode)
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DAO{db}, nil
 }
 
 // Executes a query, returning the number of rows affected
@@ -84,33 +75,31 @@ func executeQuery(db *sql.DB, query string, args ...interface{}) (int64, error) 
 	return result.RowsAffected()
 }
 
-// Init opens the database connection
-func Init(config *util.Config) (*DAO, error) {
-	connStr := fmt.Sprintf("user=%s dbname=%s host=%s sslmode=%s", config.User, config.DBName, config.Host, config.SSLMode)
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		return nil, err
-	}
-
-	return &DAO{db}, nil
+// Executes a query, returning the row
+func executeQueryWithRowResponse(db *sql.DB, query string, args ...interface{}) *sql.Row {
+	return db.QueryRow(query, args...)
 }
 
-// ListMatch returns a list containing every match
-func (dao *DAO) ListMatch() (*MatchListResponse, error) {
-	rows, err := executeQueryWithResponses(dao.DB, "SELECT * FROM Match")
+// Executes a query, returning the rows
+func executeQueryWithRowResponses(db *sql.DB, query string, args ...interface{}) (*sql.Rows, error) {
+	return db.Query(query, args...)
+}
+
+// ListMatch returns a list containing every match in the database
+func (dao *DAO) ListMatch() (*[]Match, error) {
+	rows, err := executeQueryWithRowResponses(dao.DB, "SELECT * FROM Match")
 	if err != nil {
 		return nil, err
 	}
 
-	var resp MatchListResponse
-	resp.MatchList = make([]MatchReadResponse, 0)
+	matchList := make([]Match, 0)
 	for rows.Next() {
-		var match MatchReadResponse
+		var match Match
 		err = rows.Scan(&match.ID, &match.UserOne, &match.UserTwo, &match.MatchedOn)
 		if err != nil {
 			return nil, err
 		}
-		resp.MatchList = append(resp.MatchList, match)
+		matchList = append(matchList, match)
 	}
 
 	err = rows.Err()
@@ -118,65 +107,65 @@ func (dao *DAO) ListMatch() (*MatchListResponse, error) {
 		return nil, err
 	}
 
-	return &resp, nil
+	return &matchList, nil
 }
 
-// CreateMatch inserts a new match into the database given two user IDs
-func (dao *DAO) CreateMatch(request MatchCreateRequest) (*MatchCreateResponse, error) {
-	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO Match (userOne, userTwo, matchedOn) VALUES ($1, $2, NOW()) RETURNING *", request.UserOne, request.UserTwo)
+// CreateMatch creates a new match in the database, returning the newly created match
+func (dao *DAO) CreateMatch(input CreateMatchInput) (*Match, error) {
+	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO match (userOne, userTwo, matchedOn) VALUES ($1, $2, NOW()) RETURNING *", input.UserOne, input.UserTwo)
 
-	var resp MatchCreateResponse
-	err := row.Scan(&resp.ID, &resp.UserOne, &resp.UserTwo, &resp.MatchedOn)
+	var match Match
+	err := row.Scan(&match.ID, &match.UserOne, &match.UserTwo, &match.MatchedOn)
 	if err != nil {
 		return nil, err
 	}
 
-	return &resp, nil
+	return &match, nil
 }
 
-// ReadMatch returns the information about a match stored for a given ID
-func (dao *DAO) ReadMatch(matchID int64) (*MatchReadResponse, error) {
-	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM Match WHERE id = $1", matchID)
+// ReadMatch returns the match for a given ID
+func (dao *DAO) ReadMatch(input ReadMatchInput) (*Match, error) {
+	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM match WHERE id = $1", input.ID)
 
-	var resp MatchReadResponse
-	err := row.Scan(&resp.ID, &resp.UserOne, &resp.UserTwo, &resp.MatchedOn)
+	var match Match
+	err := row.Scan(&match.ID, &match.UserOne, &match.UserTwo, &match.MatchedOn)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			return nil, ErrMatchNotFound(matchID)
+			return nil, ErrMatchNotFound(input.ID)
 		default:
 			return nil, err
 		}
 	}
 
-	return &resp, nil
+	return &match, nil
 }
 
-// UpdateMatch updates an already existing match to two user IDs
-func (dao *DAO) UpdateMatch(matchID int64, request MatchUpdateRequest) (*MatchUpdateResponse, error) {
-	row := executeQueryWithRowResponse(dao.DB, "UPDATE Match SET userOne = $1, userTwo = $2, matchedOn = NOW() WHERE id = $3 RETURNING *", request.UserOne, request.UserTwo, matchID)
+// UpdateMatch updates a match in the database, returning the newly updated match
+func (dao *DAO) UpdateMatch(input UpdateMatchInput) (*Match, error) {
+	row := executeQueryWithRowResponse(dao.DB, "UPDATE match SET userOne = $1, userTwo = $2, matchedOn = NOW() WHERE id = $3 RETURNING *", input.UserOne, input.UserTwo, input.ID)
 
-	var resp MatchUpdateResponse
-	err := row.Scan(&resp.ID, &resp.UserOne, &resp.UserTwo, &resp.MatchedOn)
+	var match Match
+	err := row.Scan(&match.ID, &match.UserOne, &match.UserTwo, &match.MatchedOn)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			return nil, ErrMatchNotFound(matchID)
+			return nil, ErrMatchNotFound(input.ID)
 		default:
 			return nil, err
 		}
 	}
 
-	return &resp, nil
+	return &match, nil
 }
 
-// DeleteMatch deletes a match from the database
-func (dao *DAO) DeleteMatch(matchID int64) error {
-	rowsAffected, err := executeQuery(dao.DB, "DELETE FROM Match WHERE id = $1", matchID)
+// DeleteMatch deletes a match in the database
+func (dao *DAO) DeleteMatch(input DeleteMatchInput) error {
+	rowsAffected, err := executeQuery(dao.DB, "DELETE FROM match WHERE id = $1", input.ID)
 	if err != nil {
 		return err
 	} else if rowsAffected == 0 {
-		return ErrMatchNotFound(matchID)
+		return ErrMatchNotFound(input.ID)
 	}
 
 	return nil

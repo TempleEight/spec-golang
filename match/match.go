@@ -14,7 +14,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type Env struct {
+// env defines the environment that requests are executed within
+type env struct {
 	dao  dao.Datastore
 	comm comm.Comm
 }
