@@ -13,17 +13,46 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type Env struct {
+// env defines the environment that requests should be executed within
+type env struct {
 	dao dao.Datastore
 }
 
-// Router generates a router for this service
-func Router(env Env) *mux.Router {
+// createUserRequest contains the information required to create a new user
+type createUserRequest struct {
+	Name string `valid:"type(string),required,stringlength(2|255)"`
+}
+
+// updateUserRequest contains all the information about an existing user
+type updateUserRequest struct {
+	Name string `valid:"type(string),required,stringlength(2|255)"`
+}
+
+// createUserResponse contains the information about the newly created user
+type createUserResponse struct {
+	ID   int64
+	Name string
+}
+
+// readUserResponse returns all the information stored about a single user
+type readUserResponse struct {
+	ID   int64
+	Name string
+}
+
+// updateUserResponse contains the information about the newly updated user
+type updateUserResponse struct {
+	ID   int64
+	Name string
+}
+
+// router generates a router for this service
+func (env *env) router() *mux.Router {
 	r := mux.NewRouter()
-	r.HandleFunc("/user", env.userCreateHandler).Methods(http.MethodPost)
-	r.HandleFunc("/user/{id}", env.userReadHandler).Methods(http.MethodGet)
-	r.HandleFunc("/user/{id}", env.userUpdateHandler).Methods(http.MethodPut)
-	r.HandleFunc("/user/{id}", env.userDeleteHandler).Methods(http.MethodDelete)
+	r.HandleFunc("/user", env.createUserHandler).Methods(http.MethodPost)
+	r.HandleFunc("/user/{id}", env.readUserHandler).Methods(http.MethodGet)
+	r.HandleFunc("/user/{id}", env.updateUserHandler).Methods(http.MethodPut)
+	r.HandleFunc("/user/{id}", env.deleteUserHandler).Methods(http.MethodDelete)
 	r.Use(jsonMiddleware)
 	return r
 }
@@ -44,9 +73,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	env := Env{d}
+	env := env{d}
 
-	log.Fatal(http.ListenAndServe(":80", Router(env)))
+	log.Fatal(http.ListenAndServe(":80", env.router()))
 }
 
 func jsonMiddleware(next http.Handler) http.Handler {
@@ -57,8 +86,8 @@ func jsonMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func (env *Env) userCreateHandler(w http.ResponseWriter, r *http.Request) {
-	var req dao.UserCreateRequest
+func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
+	var req createUserRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
@@ -73,23 +102,30 @@ func (env *Env) userCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := env.dao.CreateUser(req)
+	resp, err := env.dao.CreateUser(dao.CreateUserInput{
+		Name: req.Name,
+	})
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(resp)
+	json.NewEncoder(w).Encode(createUserResponse{
+		ID:   resp.ID,
+		Name: resp.Name,
+	})
 }
 
-func (env *Env) userReadHandler(w http.ResponseWriter, r *http.Request) {
+func (env *env) readUserHandler(w http.ResponseWriter, r *http.Request) {
 	userID, err := util.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
 		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
 		return
 	}
 
-	user, err := env.dao.ReadUser(userID)
+	user, err := env.dao.ReadUser(dao.ReadUserInput{
+		ID: userID,
+	})
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrUserNotFound:
@@ -100,17 +136,20 @@ func (env *Env) userReadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	json.NewEncoder(w).Encode(user)
+	json.NewEncoder(w).Encode(readUserResponse{
+		ID:   user.ID,
+		Name: user.Name,
+	})
 }
 
-func (env *Env) userUpdateHandler(w http.ResponseWriter, r *http.Request) {
+func (env *env) updateUserHandler(w http.ResponseWriter, r *http.Request) {
 	userID, err := util.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
 		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
 		return
 	}
 
-	var req dao.UserUpdateRequest
+	var req updateUserRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
@@ -125,7 +164,10 @@ func (env *Env) userUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := env.dao.UpdateUser(userID, req)
+	resp, err := env.dao.UpdateUser(dao.UpdateUserInput{
+		ID:   userID,
+		Name: req.Name,
+	})
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrUserNotFound:
@@ -136,17 +178,23 @@ func (env *Env) userUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	json.NewEncoder(w).Encode(resp)
+
+	json.NewEncoder(w).Encode(updateUserResponse{
+		ID:   resp.ID,
+		Name: resp.Name,
+	})
 }
 
-func (env *Env) userDeleteHandler(w http.ResponseWriter, r *http.Request) {
+func (env *env) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	userID, err := util.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
 		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
 		return
 	}
 
-	err = env.dao.DeleteUser(userID)
+	err = env.dao.DeleteUser(dao.DeleteUserInput{
+		ID: userID,
+	})
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrUserNotFound:
