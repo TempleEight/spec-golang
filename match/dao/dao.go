@@ -18,7 +18,7 @@ type Datastore interface {
 	DeleteMatch(input DeleteMatchInput) error
 }
 
-// DAO encapsulates access to the database
+// DAO encapsulates access to the datastore
 type DAO struct {
 	DB *sql.DB
 }
@@ -31,30 +31,30 @@ type Match struct {
 	MatchedOn string
 }
 
-// CreateMatchInput encapsulates the information required to create a single match
+// CreateMatchInput encapsulates the information required to create a single match in the datastore
 type CreateMatchInput struct {
 	UserOne int64
 	UserTwo int64
 }
 
-// ReadMatchInput encapsulates the information required to read a single match
+// ReadMatchInput encapsulates the information required to read a single match in the datastore
 type ReadMatchInput struct {
 	ID int64
 }
 
-// UpdateMatchInput encapsulates the information required to update a single match
+// UpdateMatchInput encapsulates the information required to update a single match in the datastore
 type UpdateMatchInput struct {
 	ID      int64
 	UserOne int64
 	UserTwo int64
 }
 
-// DeleteMatchInput encapsulates the information required to delete a single match
+// DeleteMatchInput encapsulates the information required to delete a single match in the datastore
 type DeleteMatchInput struct {
 	ID int64
 }
 
-// Init opens the database connection, returning a DAO
+// Init opens the datastore connection, returning a DAO
 func Init(config *util.Config) (*DAO, error) {
 	connStr := fmt.Sprintf("user=%s dbname=%s host=%s sslmode=%s", config.User, config.DBName, config.Host, config.SSLMode)
 	db, err := sql.Open("postgres", connStr)
@@ -85,7 +85,7 @@ func executeQueryWithRowResponses(db *sql.DB, query string, args ...interface{})
 	return db.Query(query, args...)
 }
 
-// ListMatch returns a list containing every match in the database
+// ListMatch returns a list containing every match in the datastore
 func (dao *DAO) ListMatch() (*[]Match, error) {
 	rows, err := executeQueryWithRowResponses(dao.DB, "SELECT * FROM Match")
 	if err != nil {
@@ -110,7 +110,7 @@ func (dao *DAO) ListMatch() (*[]Match, error) {
 	return &matchList, nil
 }
 
-// CreateMatch creates a new match in the database, returning the newly created match
+// CreateMatch creates a new match in the datastore, returning the newly created match
 func (dao *DAO) CreateMatch(input CreateMatchInput) (*Match, error) {
 	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO match (userOne, userTwo, matchedOn) VALUES ($1, $2, NOW()) RETURNING *", input.UserOne, input.UserTwo)
 
@@ -123,7 +123,7 @@ func (dao *DAO) CreateMatch(input CreateMatchInput) (*Match, error) {
 	return &match, nil
 }
 
-// ReadMatch returns the match for a given ID
+// ReadMatch returns the match in the datastore for a given ID
 func (dao *DAO) ReadMatch(input ReadMatchInput) (*Match, error) {
 	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM match WHERE id = $1", input.ID)
 
@@ -141,7 +141,7 @@ func (dao *DAO) ReadMatch(input ReadMatchInput) (*Match, error) {
 	return &match, nil
 }
 
-// UpdateMatch updates a match in the database, returning the newly updated match
+// UpdateMatch updates a match in the datastore, returning the newly updated match
 func (dao *DAO) UpdateMatch(input UpdateMatchInput) (*Match, error) {
 	row := executeQueryWithRowResponse(dao.DB, "UPDATE match SET userOne = $1, userTwo = $2, matchedOn = NOW() WHERE id = $3 RETURNING *", input.UserOne, input.UserTwo, input.ID)
 
@@ -159,7 +159,7 @@ func (dao *DAO) UpdateMatch(input UpdateMatchInput) (*Match, error) {
 	return &match, nil
 }
 
-// DeleteMatch deletes a match in the database
+// DeleteMatch deletes a match in the datastore
 func (dao *DAO) DeleteMatch(input DeleteMatchInput) error {
 	rowsAffected, err := executeQuery(dao.DB, "DELETE FROM match WHERE id = $1", input.ID)
 	if err != nil {
