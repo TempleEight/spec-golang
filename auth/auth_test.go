@@ -12,27 +12,25 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-type MockAuth struct {
-	ID       int
-	Email    string
-	Password string
-}
-
 type MockDAO struct {
-	AuthList []MockAuth
+	AuthList []dao.Auth
 }
 
 type MockComm struct{}
 
-func (md *MockDAO) CreateAuth(request dao.AuthCreateRequest) (*dao.Auth, error) {
-	// Check if user already exists
+func (md *MockDAO) CreateAuth(input dao.CreateAuthInput) (*dao.Auth, error) {
+	// Check if auth already exists
 	for _, auth := range md.AuthList {
-		if auth.Email == request.Email {
+		if auth.Email == input.Email {
 			return nil, dao.ErrDuplicateAuth
 		}
 	}
 
-	mockAuth := MockAuth{len(md.AuthList), request.Email, request.Password}
+	mockAuth := dao.Auth{
+		ID:       len(md.AuthList),
+		Email:    input.Email,
+		Password: input.Password,
+	}
 	md.AuthList = append(md.AuthList, mockAuth)
 	return &dao.Auth{
 		ID:       mockAuth.ID,
@@ -41,9 +39,9 @@ func (md *MockDAO) CreateAuth(request dao.AuthCreateRequest) (*dao.Auth, error) 
 	}, nil
 }
 
-func (md *MockDAO) ReadAuth(request dao.AuthReadRequest) (*dao.Auth, error) {
+func (md *MockDAO) ReadAuth(input dao.ReadAuthInput) (*dao.Auth, error) {
 	for _, auth := range md.AuthList {
-		if auth.Email == request.Email {
+		if auth.Email == input.Email {
 			return &dao.Auth{
 				ID:       auth.ID,
 				Email:    auth.Email,
@@ -61,34 +59,35 @@ func (mc *MockComm) CreateJWTCredential() (*comm.JWTCredential, error) {
 	}, nil
 }
 
-func makeRequest(env Env, method string, url string, body string) (*httptest.ResponseRecorder, error) {
+func makeRequest(env env, method string, url string, body string) (*httptest.ResponseRecorder, error) {
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest(method, url, strings.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
 
-	Router(env).ServeHTTP(rec, req)
+	env.router().ServeHTTP(rec, req)
 	return rec, nil
 }
 
-// Test that an auth can be successfully created
-func TestAuthCreateHandlerSucceeds(t *testing.T) {
+// Test that a single auth can be successfully created
+func TestCreateAuthHandlerSucceeds(t *testing.T) {
 	mockComm := MockComm{}
 	cred, _ := mockComm.CreateJWTCredential()
-	mockEnv := Env{
-		&MockDAO{AuthList: make([]MockAuth, 0)},
+	mockEnv := env{
+		&MockDAO{AuthList: make([]dao.Auth, 0)},
 		&mockComm,
 		cred,
 	}
 
+	// Create a single auth
 	res, err := makeRequest(mockEnv, http.MethodPost, "/auth", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
 	if res.Code != http.StatusOK {
-		t.Errorf("Wrong status code %v", res.Code)
+		t.Errorf("Wrong status code: %v", res.Code)
 	}
 
 	var decoded map[string]string
@@ -118,7 +117,7 @@ func TestAuthCreateHandlerSucceeds(t *testing.T) {
 	}
 
 	if id.(float64) != 0 {
-		t.Fatalf("ID is incorrect: found %+v, wanted: 0", id)
+		t.Fatalf("ID is incorrect, found: %+v, wanted: 0", id)
 	}
 
 	iss, ok := claims["iss"]
@@ -127,16 +126,79 @@ func TestAuthCreateHandlerSucceeds(t *testing.T) {
 	}
 
 	if iss.(string) != cred.Key {
-		t.Fatalf("iss is incorrect: found %v, wanted: %s", iss, cred.Key)
+		t.Fatalf("iss is incorrect: found %v, wanted %s", iss, cred.Key)
 	}
 }
 
-// Test that repeating the same request causes a `StatusForbidden`
-func TestAuthCreateHandlerFailsOnDuplicate(t *testing.T) {
+// Test that providing an empty parameter to the create endpoint fails
+func TestCreateAuthHandlerFailsOnEmptyParameter(t *testing.T) {
 	mockComm := MockComm{}
 	cred, _ := mockComm.CreateJWTCredential()
-	mockEnv := Env{
-		&MockDAO{AuthList: make([]MockAuth, 0)},
+	mockEnv := env{
+		&MockDAO{AuthList: make([]dao.Auth, 0)},
+		&mockComm,
+		cred,
+	}
+
+	// Create a single auth
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth", `{"email": "", "password": "BlackcurrantCrush123"}`)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusBadRequest {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that providing a malformed JSON body to the create endpoint fails
+func TestCreateAuthHandlerFailsOnMalformedJSON(t *testing.T) {
+	mockComm := MockComm{}
+	cred, _ := mockComm.CreateJWTCredential()
+	mockEnv := env{
+		&MockDAO{AuthList: make([]dao.Auth, 0)},
+		&mockComm,
+		cred,
+	}
+
+	// Create a single auth
+	res, err := makeRequest(mockEnv, http.MethodGet, "/auth", `{"email`)
+	if err != nil {
+		t.Fatalf("Could not make GET request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusBadRequest {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that providing no body to create endpoint fails
+func TestCreateAuthHandlerFailsOnNoBody(t *testing.T) {
+	mockComm := MockComm{}
+	cred, _ := mockComm.CreateJWTCredential()
+	mockEnv := env{
+		&MockDAO{AuthList: make([]dao.Auth, 0)},
+		&mockComm,
+		cred,
+	}
+
+	// Create a single auth
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth", "")
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusBadRequest {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that repeating the same request to the create endpoint fails
+func TestCreateAuthHandlerFailsOnDuplicate(t *testing.T) {
+	mockComm := MockComm{}
+	cred, _ := mockComm.CreateJWTCredential()
+	mockEnv := env{
+		&MockDAO{AuthList: make([]dao.Auth, 0)},
 		&mockComm,
 		cred,
 	}
@@ -158,52 +220,12 @@ func TestAuthCreateHandlerFailsOnDuplicate(t *testing.T) {
 	}
 }
 
-// Test that providing an empty value for the `email` parameter causes a `StatusBadRequest`
-func TestAuthCreateHandlerFailsOnEmptyParameter(t *testing.T) {
+// Test that a single auth can be successfully created and then read back
+func TestReadAuthHandlerSucceeds(t *testing.T) {
 	mockComm := MockComm{}
 	cred, _ := mockComm.CreateJWTCredential()
-	mockEnv := Env{
-		&MockDAO{AuthList: make([]MockAuth, 0)},
-		&mockComm,
-		cred,
-	}
-
-	res, err := makeRequest(mockEnv, http.MethodPost, "/auth", `{"email": "", "password": "BlackcurrantCrush123"}`)
-	if err != nil {
-		t.Fatalf("Could not make request: %s", err.Error())
-	}
-
-	if res.Code != http.StatusBadRequest {
-		t.Errorf("Wrong status code %v", res.Code)
-	}
-}
-
-// Test that providing no body to the request causes a `StatusBadRequest`
-func TestAuthCreateHandlerFailsOnNoBody(t *testing.T) {
-	mockComm := MockComm{}
-	cred, _ := mockComm.CreateJWTCredential()
-	mockEnv := Env{
-		&MockDAO{AuthList: make([]MockAuth, 0)},
-		&mockComm,
-		cred,
-	}
-
-	res, err := makeRequest(mockEnv, http.MethodPost, "/auth", "")
-	if err != nil {
-		t.Fatalf("Could not make request: %s", err.Error())
-	}
-
-	if res.Code != http.StatusBadRequest {
-		t.Errorf("Wrong status code %v", res.Code)
-	}
-}
-
-// Test that an auth can be successfully created and then read from
-func TestAuthReadHandlerSucceeds(t *testing.T) {
-	mockComm := MockComm{}
-	cred, _ := mockComm.CreateJWTCredential()
-	mockEnv := Env{
-		&MockDAO{AuthList: make([]MockAuth, 0)},
+	mockEnv := env{
+		&MockDAO{AuthList: make([]dao.Auth, 0)},
 		&mockComm,
 		cred,
 	}
@@ -221,7 +243,7 @@ func TestAuthReadHandlerSucceeds(t *testing.T) {
 	}
 
 	if res.Code != http.StatusOK {
-		t.Errorf("Wrong status code %v", res.Code)
+		t.Errorf("Wrong status code: %v", res.Code)
 	}
 
 	var decoded map[string]string
@@ -251,7 +273,7 @@ func TestAuthReadHandlerSucceeds(t *testing.T) {
 	}
 
 	if id.(float64) != 0 {
-		t.Fatalf("ID is incorrect: found %+v, wanted: 0", id)
+		t.Fatalf("ID is incorrect, found: %+v, wanted: 0", id)
 	}
 
 	iss, ok := claims["iss"]
@@ -260,57 +282,36 @@ func TestAuthReadHandlerSucceeds(t *testing.T) {
 	}
 
 	if iss.(string) != cred.Key {
-		t.Fatalf("iss is incorrect: found %v, wanted: %s", iss, cred.Key)
+		t.Fatalf("iss is incorrect: found %v, wanted %s", iss, cred.Key)
 	}
 }
 
-// Test that providing an empty value for the `email` parameter causes a `StatusBadRequest`
-func TestAuthReadHandlerFailsOnEmptyParameter(t *testing.T) {
+// Test that providing an empty parameter to the read endpoint fails
+func TestReadAuthHandlerFailsOnEmptyParameter(t *testing.T) {
 	mockComm := MockComm{}
 	cred, _ := mockComm.CreateJWTCredential()
-	mockEnv := Env{
-		&MockDAO{AuthList: make([]MockAuth, 0)},
+	mockEnv := env{
+		&MockDAO{AuthList: make([]dao.Auth, 0)},
 		&mockComm,
 		cred,
 	}
 
-	// Access that same auth
 	res, err := makeRequest(mockEnv, http.MethodGet, "/auth", `{"email": "", "password":"BlackcurrantCrush123"}`)
 	if err != nil {
 		t.Fatalf("Could not make GET request: %s", err.Error())
 	}
 
 	if res.Code != http.StatusBadRequest {
-		t.Errorf("Wrong status code %v", res.Code)
+		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }
 
-// Test that providing an auth that doesn't exist causes a `StatusUnauthorized`
-func TestAuthReadHandlerFailsOnNonExistentAuth(t *testing.T) {
+// Test that providing a malformed JSON body to the read endpoint fails
+func TestReadAuthHandlerFailsOnMalformedJSON(t *testing.T) {
 	mockComm := MockComm{}
 	cred, _ := mockComm.CreateJWTCredential()
-	mockEnv := Env{
-		&MockDAO{AuthList: make([]MockAuth, 0)},
-		&mockComm,
-		cred,
-	}
-
-	res, err := makeRequest(mockEnv, http.MethodGet, "/auth", `{"email": "idonotexist@test.com", "password":"BlackcurrantCrush123"}`)
-	if err != nil {
-		t.Fatalf("Could not make GET request: %s", err.Error())
-	}
-
-	if res.Code != http.StatusUnauthorized {
-		t.Errorf("Wrong status code %v", res.Code)
-	}
-}
-
-// Test that providing an invalid json body causes a `StatusBadRequest`
-func TestAuthReadHandlerFailsOnMalformedJSON(t *testing.T) {
-	mockComm := MockComm{}
-	cred, _ := mockComm.CreateJWTCredential()
-	mockEnv := Env{
-		&MockDAO{AuthList: make([]MockAuth, 0)},
+	mockEnv := env{
+		&MockDAO{AuthList: make([]dao.Auth, 0)},
 		&mockComm,
 		cred,
 	}
@@ -321,6 +322,46 @@ func TestAuthReadHandlerFailsOnMalformedJSON(t *testing.T) {
 	}
 
 	if res.Code != http.StatusBadRequest {
+		t.Errorf("Wrong status code %v", res.Code)
+	}
+}
+
+// Test that providing no body to the read endpoint fails
+func TestReadAuthHandlerFailsOnNoBody(t *testing.T) {
+	mockComm := MockComm{}
+	cred, _ := mockComm.CreateJWTCredential()
+	mockEnv := env{
+		&MockDAO{AuthList: make([]dao.Auth, 0)},
+		&mockComm,
+		cred,
+	}
+
+	res, err := makeRequest(mockEnv, http.MethodGet, "/auth", "")
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusBadRequest {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that providing a non-existent auth to the read endpoint fails
+func TestReadAuthHandlerFailsOnNonExistentAuth(t *testing.T) {
+	mockComm := MockComm{}
+	cred, _ := mockComm.CreateJWTCredential()
+	mockEnv := env{
+		&MockDAO{AuthList: make([]dao.Auth, 0)},
+		&mockComm,
+		cred,
+	}
+
+	res, err := makeRequest(mockEnv, http.MethodGet, "/auth", `{"email": "idonotexist@test.com", "password":"BlackcurrantCrush123"}`)
+	if err != nil {
+		t.Fatalf("Could not make GET request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusUnauthorized {
 		t.Errorf("Wrong status code %v", res.Code)
 	}
 }
