@@ -126,11 +126,63 @@ func TestCreateMatchHandlerSucceeds(t *testing.T) {
 	received := res.Body.String()
 	expected := `{"ID":0,"UserOne":0,"UserTwo":1,"MatchedOn":"2020-01-01T12:00:00.000000Z"}`
 	if expected != strings.TrimSuffix(received, "\n") {
-		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
+		t.Errorf("Handler returned incorrect body: received %+v, expected %+v", received, expected)
 	}
 }
 
-// Test that a match is not created if UserOne doesn't exist
+// Test that providing an incomplete body to the create endpoint fails
+func TestCreateMatchHandlerFailsOnIncompleteBody(t *testing.T) {
+	mockEnv := env{
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []int64{0, 1}},
+	}
+
+	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 0}`)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusBadRequest {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that providing a malformed JSON body to the create endpoint fails
+func TestCreateMatchHandlerFailsOnMalformedJSONBody(t *testing.T) {
+	mockEnv := env{
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []int64{0, 1}},
+	}
+
+	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne"`)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusBadRequest {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that providing no body to the create endpoint fails
+func TestCreateMatchHandlerFailsOnNoBody(t *testing.T) {
+	mockEnv := env{
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []int64{0, 1}},
+	}
+
+	// Create a single match
+	res, err := makeRequest(mockEnv, http.MethodPost, "/match", "")
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusBadRequest {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that providing an invalid UserOne reference to the create endpoint fails
 func TestCreateMatchHandlerFailsOnInvalidUserOne(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
@@ -147,7 +199,7 @@ func TestCreateMatchHandlerFailsOnInvalidUserOne(t *testing.T) {
 	}
 }
 
-// Test that a match is not created if UserTwo doesn't exist
+// Test that providing an invalid UserTwo reference to the create endpoint fails
 func TestCreateMatchHandlerFailsOnInvalidUserTwo(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
@@ -164,7 +216,7 @@ func TestCreateMatchHandlerFailsOnInvalidUserTwo(t *testing.T) {
 	}
 }
 
-// Test that a match is not created if every reference doesn't exist
+// Test that providing all invalid references to the create endpoint fails
 func TestCreateMatchHandlerFailsOnAllInvalidReferences(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
@@ -172,40 +224,6 @@ func TestCreateMatchHandlerFailsOnAllInvalidReferences(t *testing.T) {
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 123456, "UserTwo": 234567}`)
-	if err != nil {
-		t.Fatalf("Could not make request: %s", err.Error())
-	}
-
-	if res.Code != http.StatusBadRequest {
-		t.Errorf("Wrong status code: %v", res.Code)
-	}
-}
-
-// Test that a match is not created if the request body is not complete
-func TestCreateMatchHandlerFailsOnOnlyProvidingOneUser(t *testing.T) {
-	mockEnv := env{
-		&mockDAO{matchList: make([]dao.Match, 0)},
-		&mockComm{userIDs: []int64{0, 1}},
-	}
-
-	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 123456}`)
-	if err != nil {
-		t.Fatalf("Could not make request: %s", err.Error())
-	}
-
-	if res.Code != http.StatusBadRequest {
-		t.Errorf("Wrong status code: %v", res.Code)
-	}
-}
-
-// Test that creating a match fails if the request body is malformed
-func TestCreateMatchHandlerFailsOnMalformedJSONBody(t *testing.T) {
-	mockEnv := env{
-		&mockDAO{matchList: make([]dao.Match, 0)},
-		&mockComm{userIDs: []int64{0, 1}},
-	}
-
-	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"Use}`)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
