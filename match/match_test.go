@@ -9,17 +9,17 @@ import (
 	"github.com/TempleEight/spec-golang/match/dao"
 )
 
-type MockDAO struct {
-	MatchList []dao.Match
+type mockDAO struct {
+	matchList []dao.Match
 }
 
-type MockComm struct {
-	UserIDs []int64
+type mockComm struct {
+	userIDs []int64
 }
 
-func (md *MockDAO) ListMatch() (*[]dao.Match, error) {
+func (md *mockDAO) ListMatch() (*[]dao.Match, error) {
 	matchList := make([]dao.Match, 0)
-	for _, match := range md.MatchList {
+	for _, match := range md.matchList {
 		matchList = append(matchList, dao.Match{
 			ID:        match.ID,
 			UserOne:   match.UserOne,
@@ -31,14 +31,14 @@ func (md *MockDAO) ListMatch() (*[]dao.Match, error) {
 	return &matchList, nil
 }
 
-func (md *MockDAO) CreateMatch(input dao.CreateMatchInput) (*dao.Match, error) {
+func (md *mockDAO) CreateMatch(input dao.CreateMatchInput) (*dao.Match, error) {
 	mockMatch := dao.Match{
-		ID:        int64(len(md.MatchList)),
+		ID:        int64(len(md.matchList)),
 		UserOne:   input.UserOne,
 		UserTwo:   input.UserTwo,
 		MatchedOn: "2020-01-01T12:00:00.000000Z",
 	}
-	md.MatchList = append(md.MatchList, mockMatch)
+	md.matchList = append(md.matchList, mockMatch)
 	return &dao.Match{
 		ID:        mockMatch.ID,
 		UserOne:   mockMatch.UserOne,
@@ -47,8 +47,8 @@ func (md *MockDAO) CreateMatch(input dao.CreateMatchInput) (*dao.Match, error) {
 	}, nil
 }
 
-func (md *MockDAO) ReadMatch(input dao.ReadMatchInput) (*dao.Match, error) {
-	for _, match := range md.MatchList {
+func (md *mockDAO) ReadMatch(input dao.ReadMatchInput) (*dao.Match, error) {
+	for _, match := range md.matchList {
 		if match.ID == input.ID {
 			return &dao.Match{
 				ID:        match.ID,
@@ -61,35 +61,35 @@ func (md *MockDAO) ReadMatch(input dao.ReadMatchInput) (*dao.Match, error) {
 	return nil, dao.ErrMatchNotFound(input.ID)
 }
 
-func (md *MockDAO) UpdateMatch(input dao.UpdateMatchInput) (*dao.Match, error) {
-	for i, match := range md.MatchList {
+func (md *mockDAO) UpdateMatch(input dao.UpdateMatchInput) (*dao.Match, error) {
+	for i, match := range md.matchList {
 		if match.ID == input.ID {
-			md.MatchList[i].UserOne = input.UserOne
-			md.MatchList[i].UserTwo = input.UserTwo
-			md.MatchList[i].MatchedOn = "2020-12-31T12:00:00.000000Z"
+			md.matchList[i].UserOne = input.UserOne
+			md.matchList[i].UserTwo = input.UserTwo
+			md.matchList[i].MatchedOn = "2020-12-31T12:00:00.000000Z"
 			return &dao.Match{
-				ID:        md.MatchList[i].ID,
-				UserOne:   md.MatchList[i].UserOne,
-				UserTwo:   md.MatchList[i].UserTwo,
-				MatchedOn: md.MatchList[i].MatchedOn,
+				ID:        md.matchList[i].ID,
+				UserOne:   md.matchList[i].UserOne,
+				UserTwo:   md.matchList[i].UserTwo,
+				MatchedOn: md.matchList[i].MatchedOn,
 			}, nil
 		}
 	}
 	return nil, dao.ErrMatchNotFound(input.ID)
 }
 
-func (md *MockDAO) DeleteMatch(input dao.DeleteMatchInput) error {
-	for i, match := range md.MatchList {
+func (md *mockDAO) DeleteMatch(input dao.DeleteMatchInput) error {
+	for i, match := range md.matchList {
 		if match.ID == input.ID {
-			md.MatchList = append(md.MatchList[:i], md.MatchList[i+1:]...)
+			md.matchList = append(md.matchList[:i], md.matchList[i+1:]...)
 			return nil
 		}
 	}
 	return dao.ErrMatchNotFound(input.ID)
 }
 
-func (mc *MockComm) CheckUser(userID int64) (bool, error) {
-	for _, id := range mc.UserIDs {
+func (mc *mockComm) CheckUser(userID int64) (bool, error) {
+	for _, id := range mc.userIDs {
 		if id == userID {
 			return true, nil
 		}
@@ -110,8 +110,8 @@ func makeRequest(env env, method string, url string, body string) (*httptest.Res
 // Test that a match can be created successfully, assuming each user exists
 func TestMatchCreateHandlerSucceeds(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{MatchList: make([]dao.Match, 0)},
-		&MockComm{UserIDs: []int64{0, 1}},
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []int64{0, 1}},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 0, "UserTwo": 1}`)
@@ -133,8 +133,8 @@ func TestMatchCreateHandlerSucceeds(t *testing.T) {
 // Test that a match is not created if UserOne doesn't exist
 func TestMatchCreateHandlerFailsOnInvalidUserOne(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{MatchList: make([]dao.Match, 0)},
-		&MockComm{UserIDs: []int64{0, 1}},
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []int64{0, 1}},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 123456, "UserTwo": 0}`)
@@ -150,8 +150,8 @@ func TestMatchCreateHandlerFailsOnInvalidUserOne(t *testing.T) {
 // Test that a match is not created if UserTwo doesn't exist
 func TestMatchCreateHandlerFailsOnInvalidUserTwo(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{MatchList: make([]dao.Match, 0)},
-		&MockComm{UserIDs: []int64{0, 1}},
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []int64{0, 1}},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 0, "UserTwo": 123456}`)
@@ -167,8 +167,8 @@ func TestMatchCreateHandlerFailsOnInvalidUserTwo(t *testing.T) {
 // Test that a match is not created if every reference doesn't exist
 func TestMatchCreateHandlerFailsOnAllInvalidReferences(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{MatchList: make([]dao.Match, 0)},
-		&MockComm{UserIDs: []int64{0, 1}},
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []int64{0, 1}},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 123456, "UserTwo": 234567}`)
@@ -184,8 +184,8 @@ func TestMatchCreateHandlerFailsOnAllInvalidReferences(t *testing.T) {
 // Test that a match is not created if the request body is not complete
 func TestMatchCreateHandlerFailsOnOnlyProvidingOneUser(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{MatchList: make([]dao.Match, 0)},
-		&MockComm{UserIDs: []int64{0, 1}},
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []int64{0, 1}},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 123456}`)
@@ -201,8 +201,8 @@ func TestMatchCreateHandlerFailsOnOnlyProvidingOneUser(t *testing.T) {
 // Test that creating a match fails if the request body is malformed
 func TestMatchCreateHandlerFailsOnMalformedJSONBody(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{MatchList: make([]dao.Match, 0)},
-		&MockComm{UserIDs: []int64{0, 1}},
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []int64{0, 1}},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"Use}`)
