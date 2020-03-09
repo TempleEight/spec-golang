@@ -114,10 +114,10 @@ func (env *env) listMatchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	matchListResp := listMatchResponse{
-		matchList: make([]readMatchResponse, 0),
+		MatchList: make([]readMatchResponse, 0),
 	}
 	for _, match := range *matchList {
-		matchListResp.matchList = append(matchListResp.matchList, readMatchResponse{
+		matchListResp.MatchList = append(matchListResp.MatchList, readMatchResponse{
 			ID:        match.ID,
 			UserOne:   match.UserOne,
 			UserTwo:   match.UserTwo,
