@@ -10,20 +10,20 @@ import (
 )
 
 // Define 2 JWTs with ID 0 and 1
-const User0JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjowLCJpc3MiOiJmRlM4S21WWXVLQUN5RjN3ZHBQS0hTUXFtWlZWd2pEcSJ9.KzUa-OpHEjFQlsSy7YZI1Kppu4eIU5nyivLvivWcpRc"
-const User1JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjoxLCJpc3MiOiJmRlM4S21WWXVLQUN5RjN3ZHBQS0hTUXFtWlZWd2pEcSJ9.kXaTT0Yl3-zeWreKOl5Zd6dG1gJG49JSS0zfdBRG_oU"
+const user0JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjowLCJpc3MiOiJmRlM4S21WWXVLQUN5RjN3ZHBQS0hTUXFtWlZWd2pEcSJ9.KzUa-OpHEjFQlsSy7YZI1Kppu4eIU5nyivLvivWcpRc"
+const user1JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjoxLCJpc3MiOiJmRlM4S21WWXVLQUN5RjN3ZHBQS0hTUXFtWlZWd2pEcSJ9.kXaTT0Yl3-zeWreKOl5Zd6dG1gJG49JSS0zfdBRG_oU"
 
-type MockDAO struct {
-	UserList []dao.User
+type mockDAO struct {
+	userList []dao.User
 }
 
-func (md *MockDAO) CreateUser(input dao.CreateUserInput) (*dao.User, error) {
+func (md *mockDAO) CreateUser(input dao.CreateUserInput) (*dao.User, error) {
 	mockUser := dao.User{
-		ID:     int64(len(md.UserList)),
+		ID:     int64(len(md.userList)),
 		AuthID: input.AuthID,
 		Name:   input.Name,
 	}
-	md.UserList = append(md.UserList, mockUser)
+	md.userList = append(md.userList, mockUser)
 	return &dao.User{
 		ID:     mockUser.ID,
 		AuthID: mockUser.AuthID,
@@ -31,8 +31,8 @@ func (md *MockDAO) CreateUser(input dao.CreateUserInput) (*dao.User, error) {
 	}, nil
 }
 
-func (md *MockDAO) ReadUser(input dao.ReadUserInput) (*dao.User, error) {
-	for _, user := range md.UserList {
+func (md *mockDAO) ReadUser(input dao.ReadUserInput) (*dao.User, error) {
+	for _, user := range md.userList {
 		if user.ID == input.ID {
 			return &dao.User{
 				ID:     user.ID,
@@ -44,10 +44,10 @@ func (md *MockDAO) ReadUser(input dao.ReadUserInput) (*dao.User, error) {
 	return nil, dao.ErrUserNotFound(input.ID)
 }
 
-func (md *MockDAO) UpdateUser(input dao.UpdateUserInput) (*dao.User, error) {
-	for i, user := range md.UserList {
+func (md *mockDAO) UpdateUser(input dao.UpdateUserInput) (*dao.User, error) {
+	for i, user := range md.userList {
 		if user.ID == input.ID {
-			md.UserList[i].Name = user.Name
+			md.userList[i].Name = user.Name
 			return &dao.User{
 				ID:     user.ID,
 				AuthID: user.AuthID,
@@ -58,10 +58,10 @@ func (md *MockDAO) UpdateUser(input dao.UpdateUserInput) (*dao.User, error) {
 	return nil, dao.ErrUserNotFound(input.ID)
 }
 
-func (md *MockDAO) DeleteUser(input dao.DeleteUserInput) error {
-	for i, user := range md.UserList {
+func (md *mockDAO) DeleteUser(input dao.DeleteUserInput) error {
+	for i, user := range md.userList {
 		if user.ID == input.ID {
-			md.UserList = append(md.UserList[:i], md.UserList[i+1:]...)
+			md.userList = append(md.userList[:i], md.userList[i+1:]...)
 			return nil
 		}
 	}
@@ -83,11 +83,11 @@ func makeRequest(env env, method string, url string, body string, authToken stri
 // Test that a single user can be successfully created
 func TestCreateUserHandlerSucceeds(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
 	// Create a single user
-	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, User0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -106,11 +106,11 @@ func TestCreateUserHandlerSucceeds(t *testing.T) {
 // Test that providing an empty parameter to the create endpoint fails
 func TestCreateUserHandlerFailsOnEmptyParameter(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
 	// Create a single user
-	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": ""}`, User0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": ""}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -123,11 +123,11 @@ func TestCreateUserHandlerFailsOnEmptyParameter(t *testing.T) {
 // Test that providing a malformed JSON body to the create endpoint fails
 func TestCreateUserHandlerFailsOnMalformedJSONBody(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
 	// Create a single user
-	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name"`, User0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name"`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
@@ -140,11 +140,11 @@ func TestCreateUserHandlerFailsOnMalformedJSONBody(t *testing.T) {
 // Test that providing no body to the create endpoint fails
 func TestCreateUserHandlerFailsOnNoBody(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
 	// Create a single user
-	res, err := makeRequest(mockEnv, http.MethodPost, "/user", "", User0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/user", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -157,7 +157,7 @@ func TestCreateUserHandlerFailsOnNoBody(t *testing.T) {
 // Test that providing an empty JWT to the create endpoint fails
 func TestCreateUserHandlerFailsOnEmptyJWT(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
 	// Create a single user
@@ -174,17 +174,17 @@ func TestCreateUserHandlerFailsOnEmptyJWT(t *testing.T) {
 // Test that a single user can be successfully created and then read back
 func TestReadUserHandlerSucceeds(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
 	// Create a single user
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, User0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
 
 	// Read that same user
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/0", "", User0JWT)
+	res, err := makeRequest(mockEnv, http.MethodGet, "/user/0", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make GET request: %s", err.Error())
 	}
@@ -203,10 +203,10 @@ func TestReadUserHandlerSucceeds(t *testing.T) {
 // Test that providing no ID to the read endpoint fails
 func TestReadUserHandlerFailsOnEmptyID(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/", "", User0JWT)
+	res, err := makeRequest(mockEnv, http.MethodGet, "/user/", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -220,10 +220,10 @@ func TestReadUserHandlerFailsOnEmptyID(t *testing.T) {
 // Test that providing a non-existent ID to the read endpoint fails
 func TestReadUserHandlerFailsOnNonExistentID(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/123456", "", User0JWT)
+	res, err := makeRequest(mockEnv, http.MethodGet, "/user/123456", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -237,10 +237,10 @@ func TestReadUserHandlerFailsOnNonExistentID(t *testing.T) {
 // Test that providing a string ID to the read endpoint fails
 func TestReadUserHandlerFailsOnStringID(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/abcdef", "", User0JWT)
+	res, err := makeRequest(mockEnv, http.MethodGet, "/user/abcdef", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -254,7 +254,7 @@ func TestReadUserHandlerFailsOnStringID(t *testing.T) {
 // Test that providing an empty JWT to the read endpoint fails
 func TestReadUserHandlerFailsOnEmptyJWT(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodGet, "/user/0", `{"Name": "Jay"}`, "")
@@ -270,17 +270,17 @@ func TestReadUserHandlerFailsOnEmptyJWT(t *testing.T) {
 // Test that a single user can be successfully created and then updated
 func TestUpdateUserHandlerSucceeds(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
 	// Create a single user
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, User0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
 
 	// Update that same user
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name": "Lewis"}`, User0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name": "Lewis"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make PUT request: %s", err.Error())
 	}
@@ -299,17 +299,17 @@ func TestUpdateUserHandlerSucceeds(t *testing.T) {
 // Test that providing an empty parameter to the update endpoint fails
 func TestUpdateUserHandlerFailsOnEmptyParameter(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
 	// Create a single user
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, User0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
 
 	// Update that same user
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name": ""}`, User0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name": ""}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make PUT request: %s", err.Error())
 	}
@@ -322,17 +322,17 @@ func TestUpdateUserHandlerFailsOnEmptyParameter(t *testing.T) {
 // Test that providing a malformed JSON body to the update endpoint fails
 func TestUpdateUserHandlerFailsOnMalformedJSONBody(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
 	// Create a single user
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, User0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
 
 	// Update that same user
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name"}`, User0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make PUT request: %s", err.Error())
 	}
@@ -345,17 +345,17 @@ func TestUpdateUserHandlerFailsOnMalformedJSONBody(t *testing.T) {
 // Test that providing no body to the update endpoint fails
 func TestUpdateUserHandlerFailsOnNoBody(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
 	// Create a single user
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, User0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
 
 	// Update that same user
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", "", User0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make PUT request: %s", err.Error())
 	}
@@ -368,10 +368,10 @@ func TestUpdateUserHandlerFailsOnNoBody(t *testing.T) {
 // Test that providing no ID to the update endpoint fails
 func TestUpdateUserHandlerFailsOnEmptyID(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/", "", User0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -385,10 +385,10 @@ func TestUpdateUserHandlerFailsOnEmptyID(t *testing.T) {
 // Test that providing a non-existent ID to the update endpoint fails
 func TestUpdateUserHandlerFailsOnNonExistentID(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/123456", `{"Name":"Will"}`, User0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/123456", `{"Name":"Will"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -402,10 +402,10 @@ func TestUpdateUserHandlerFailsOnNonExistentID(t *testing.T) {
 // Test that providing a string ID to the update endpoint fails
 func TestUpdateUserHandlerFailsOnStringID(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/abcdef", "", User0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/abcdef", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -419,7 +419,7 @@ func TestUpdateUserHandlerFailsOnStringID(t *testing.T) {
 // Test that providing an empty JWT to the update endpoint fails
 func TestUpdateUserHandlerFailsOnEmptyJWT(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name": "Jay"}`, "")
@@ -435,17 +435,17 @@ func TestUpdateUserHandlerFailsOnEmptyJWT(t *testing.T) {
 // Test that providing a different JWT to the update endpoint fails
 func TestUpdateUserHandlerFailsOnDifferentJWT(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	// Create a single user with User0JWT
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, User0JWT)
+	// Create a single user with user0JWT
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
-	// Update a single user with User1JWT
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name": "Lewis"}`, User1JWT)
+	// Update a single user with user1JWT
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name": "Lewis"}`, user1JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -458,17 +458,17 @@ func TestUpdateUserHandlerFailsOnDifferentJWT(t *testing.T) {
 // Test that a single user can be successfully created and then deleted
 func TestDeleteUserHandlerSucceeds(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
 	// Create a single user
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, User0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
 
 	// Delete that same user
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/0", "", User0JWT)
+	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/0", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make DELETE request: %s", err.Error())
 	}
@@ -487,10 +487,10 @@ func TestDeleteUserHandlerSucceeds(t *testing.T) {
 // Test that providing no ID to the delete endpoint fails
 func TestDeleteUserHandlerFailsOnEmptyID(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/", "", User0JWT)
+	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -504,10 +504,10 @@ func TestDeleteUserHandlerFailsOnEmptyID(t *testing.T) {
 // Test that providing a non-existent ID to the delete endpoint fails
 func TestDeleteUserHandlerFailsOnNonExistentID(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/123456", "", User0JWT)
+	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/123456", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -521,10 +521,10 @@ func TestDeleteUserHandlerFailsOnNonExistentID(t *testing.T) {
 // Test that providing a string ID to the delete endpoint fails
 func TestDeleteUserHandlerFailsOnStringID(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/abcdef", "", User0JWT)
+	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/abcdef", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -538,7 +538,7 @@ func TestDeleteUserHandlerFailsOnStringID(t *testing.T) {
 // Test that providing an empty JWT to the delete endpoint fails
 func TestDeleteUserHandlerFailsOnEmptyJWT(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/0", "", "")
@@ -554,17 +554,17 @@ func TestDeleteUserHandlerFailsOnEmptyJWT(t *testing.T) {
 // Test that providing a different JWT to the delete endpoint fails
 func TestDeleteUserHandlerFailsOnDifferentJWT(t *testing.T) {
 	mockEnv := env{
-		&MockDAO{UserList: make([]dao.User, 0)},
+		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	// Create a single user with User0JWT
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, User0JWT)
+	// Create a single user with user0JWT
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
-	// Delete a single user with User1JWT
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/0", "", User1JWT)
+	// Delete a single user with user1JWT
+	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/0", "", user1JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
