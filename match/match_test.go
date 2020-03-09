@@ -111,7 +111,7 @@ func makeRequest(env env, method string, url string, body string) (*httptest.Res
 func TestMatchCreateHandlerSucceeds(t *testing.T) {
 	mockEnv := env{
 		&MockDAO{MatchList: make([]dao.Match, 0)},
-		&MockComm{UserIDs: []int{0, 1}},
+		&MockComm{UserIDs: []int64{0, 1}},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 0, "UserTwo": 1}`)
@@ -134,7 +134,7 @@ func TestMatchCreateHandlerSucceeds(t *testing.T) {
 func TestMatchCreateHandlerFailsOnInvalidUserOne(t *testing.T) {
 	mockEnv := env{
 		&MockDAO{MatchList: make([]dao.Match, 0)},
-		&MockComm{UserIDs: []int{0, 1}},
+		&MockComm{UserIDs: []int64{0, 1}},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 123456, "UserTwo": 0}`)
@@ -151,7 +151,7 @@ func TestMatchCreateHandlerFailsOnInvalidUserOne(t *testing.T) {
 func TestMatchCreateHandlerFailsOnInvalidUserTwo(t *testing.T) {
 	mockEnv := env{
 		&MockDAO{MatchList: make([]dao.Match, 0)},
-		&MockComm{UserIDs: []int{0, 1}},
+		&MockComm{UserIDs: []int64{0, 1}},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 0, "UserTwo": 123456}`)
@@ -168,7 +168,7 @@ func TestMatchCreateHandlerFailsOnInvalidUserTwo(t *testing.T) {
 func TestMatchCreateHandlerFailsOnAllInvalidReferences(t *testing.T) {
 	mockEnv := env{
 		&MockDAO{MatchList: make([]dao.Match, 0)},
-		&MockComm{UserIDs: []int{0, 1}},
+		&MockComm{UserIDs: []int64{0, 1}},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 123456, "UserTwo": 234567}`)
@@ -185,7 +185,7 @@ func TestMatchCreateHandlerFailsOnAllInvalidReferences(t *testing.T) {
 func TestMatchCreateHandlerFailsOnOnlyProvidingOneUser(t *testing.T) {
 	mockEnv := env{
 		&MockDAO{MatchList: make([]dao.Match, 0)},
-		&MockComm{UserIDs: []int{0, 1}},
+		&MockComm{UserIDs: []int64{0, 1}},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 123456}`)
@@ -202,7 +202,7 @@ func TestMatchCreateHandlerFailsOnOnlyProvidingOneUser(t *testing.T) {
 func TestMatchCreateHandlerFailsOnMalformedJSONBody(t *testing.T) {
 	mockEnv := env{
 		&MockDAO{MatchList: make([]dao.Match, 0)},
-		&MockComm{UserIDs: []int{0, 1}},
+		&MockComm{UserIDs: []int64{0, 1}},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"Use}`)
