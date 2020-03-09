@@ -52,6 +52,7 @@ func (env *env) router() *mux.Router {
 	r := mux.NewRouter()
 	r.HandleFunc("/auth", env.createAuthHandler).Methods(http.MethodPost)
 	r.HandleFunc("/auth", env.readAuthHandler).Methods(http.MethodGet)
+	r.Use(jsonMiddleware)
 	return r
 }
 
@@ -81,6 +82,14 @@ func main() {
 	env := env{d, c, jwtCredential}
 
 	log.Fatal(http.ListenAndServe(":82", env.router()))
+}
+
+func jsonMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// All responses are JSON, set header accordingly
+		w.Header().Set("Content-Type", "application/json")
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (env *env) createAuthHandler(w http.ResponseWriter, r *http.Request) {
