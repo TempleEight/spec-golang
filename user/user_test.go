@@ -614,7 +614,7 @@ func TestReadUserAuthHandlerFailsOnEmptyID(t *testing.T) {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
-	// Not Found, since no route is defined for GET at /user//auth
+	// Bad request, since auth is interpreted as an ID
 	if res.Code != http.StatusBadRequest {
 		t.Errorf("Wrong status code: %v", res.Code)
 	}
