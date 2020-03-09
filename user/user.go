@@ -34,7 +34,7 @@ type createUserResponse struct {
 	Name string
 }
 
-// readUserResponse returns all the information stored about a user
+// readUserResponse returns all the information stored about a single user
 type readUserResponse struct {
 	ID   int64
 	Name string

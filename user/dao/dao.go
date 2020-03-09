@@ -78,21 +78,21 @@ func Init(config *util.Config) (*DAO, error) {
 func (dao *DAO) CreateUser(input CreateUserInput) (*User, error) {
 	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO User_Temple (name) VALUES ($1) RETURNING *", input.Name)
 
-	var resp User
-	err := row.Scan(&resp.ID, &resp.Name)
+	var user User
+	err := row.Scan(&user.ID, &user.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	return &resp, nil
+	return &user, nil
 }
 
 // ReadUser returns the information about a user stored for a given ID
 func (dao *DAO) ReadUser(input ReadUserInput) (*User, error) {
 	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM User_Temple WHERE id = $1", input.ID)
 
-	var resp User
-	err := row.Scan(&resp.ID, &resp.Name)
+	var user User
+	err := row.Scan(&user.ID, &user.Name)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
@@ -102,15 +102,15 @@ func (dao *DAO) ReadUser(input ReadUserInput) (*User, error) {
 		}
 	}
 
-	return &resp, nil
+	return &user, nil
 }
 
 // UpdateUser updates a user in the database, returning an error if it fails
 func (dao *DAO) UpdateUser(input UpdateUserInput) (*User, error) {
 	row := executeQueryWithRowResponse(dao.DB, "UPDATE User_Temple set Name = $1 WHERE Id = $2 RETURNING *", input.Name, input.ID)
 
-	var resp User
-	err := row.Scan(&resp.ID, &resp.Name)
+	var user User
+	err := row.Scan(&user.ID, &user.Name)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
@@ -120,7 +120,7 @@ func (dao *DAO) UpdateUser(input UpdateUserInput) (*User, error) {
 		}
 	}
 
-	return &resp, nil
+	return &user, nil
 }
 
 // DeleteUser deletes a user in the database, returning an error if it fails or the user doesn't exist
