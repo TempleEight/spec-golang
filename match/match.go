@@ -34,7 +34,7 @@ type updateMatchRequest struct {
 
 // listMatchResponse contains a single match list to be returned to the client
 type listMatchResponse struct {
-	matchList []readMatchResponse
+	MatchList []readMatchResponse
 }
 
 // createMatchResponse contains a newly created match to be returned to the client
