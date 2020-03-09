@@ -80,7 +80,7 @@ func TestCreateAuthHandlerSucceeds(t *testing.T) {
 		cred,
 	}
 
-	// Make a single auth
+	// Create a single auth
 	res, err := makeRequest(mockEnv, http.MethodPost, "/auth", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
@@ -117,7 +117,7 @@ func TestCreateAuthHandlerSucceeds(t *testing.T) {
 	}
 
 	if id.(float64) != 0 {
-		t.Fatalf("ID is incorrect: found %+v, wanted 0", id)
+		t.Fatalf("ID is incorrect, found: %+v, wanted: 0", id)
 	}
 
 	iss, ok := claims["iss"]
@@ -140,7 +140,7 @@ func TestCreateAuthHandlerFailsOnEmptyParameter(t *testing.T) {
 		cred,
 	}
 
-	// Make a single auth
+	// Create a single auth
 	res, err := makeRequest(mockEnv, http.MethodPost, "/auth", `{"email": "", "password": "BlackcurrantCrush123"}`)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
@@ -161,7 +161,7 @@ func TestCreateAuthHandlerFailsOnMalformedJSON(t *testing.T) {
 		cred,
 	}
 
-	// Make a single auth
+	// Create a single auth
 	res, err := makeRequest(mockEnv, http.MethodGet, "/auth", `{"email`)
 	if err != nil {
 		t.Fatalf("Could not make GET request: %s", err.Error())
@@ -182,7 +182,7 @@ func TestCreateAuthHandlerFailsOnNoBody(t *testing.T) {
 		cred,
 	}
 
-	// Make a single auth
+	// Create a single auth
 	res, err := makeRequest(mockEnv, http.MethodPost, "/auth", "")
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
@@ -273,7 +273,7 @@ func TestReadAuthHandlerSucceeds(t *testing.T) {
 	}
 
 	if id.(float64) != 0 {
-		t.Fatalf("ID is incorrect: found %+v, wanted 0", id)
+		t.Fatalf("ID is incorrect, found: %+v, wanted: 0", id)
 	}
 
 	iss, ok := claims["iss"]
@@ -326,7 +326,7 @@ func TestReadAuthHandlerFailsOnMalformedJSON(t *testing.T) {
 	}
 }
 
-// Test that providing no body to read endpoint fails
+// Test that providing no body to the read endpoint fails
 func TestReadAuthHandlerFailsOnNoBody(t *testing.T) {
 	mockComm := MockComm{}
 	cred, _ := mockComm.CreateJWTCredential()
@@ -346,7 +346,7 @@ func TestReadAuthHandlerFailsOnNoBody(t *testing.T) {
 	}
 }
 
-// Test that providing a non existent auth to the read endpoint fails
+// Test that providing a non-existent auth to the read endpoint fails
 func TestReadAuthHandlerFailsOnNonExistentAuth(t *testing.T) {
 	mockComm := MockComm{}
 	cred, _ := mockComm.CreateJWTCredential()
