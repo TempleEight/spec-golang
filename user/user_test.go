@@ -93,7 +93,7 @@ func TestCreateUserHandlerSucceeds(t *testing.T) {
 	}
 
 	if res.Code != http.StatusOK {
-		t.Errorf("Wrong status code %v", res.Code)
+		t.Errorf("Wrong status code: %v", res.Code)
 	}
 
 	received := res.Body.String()
