@@ -18,29 +18,29 @@ type env struct {
 	dao dao.Datastore
 }
 
-// createUserRequest contains the information required to create a new user
+// createUserRequest contains the client-provided information required to create a single user
 type createUserRequest struct {
 	Name string `valid:"type(string),required,stringlength(2|255)"`
 }
 
-// updateUserRequest contains all the information about an existing user
+// updateUserRequest contains the client-provided information required to update a single user, excluding ID
 type updateUserRequest struct {
 	Name string `valid:"type(string),required,stringlength(2|255)"`
 }
 
-// createUserResponse contains the information about the newly created user
+// createUserResponse contains a newly created user to be returned to the client
 type createUserResponse struct {
 	ID   int64
 	Name string
 }
 
-// readUserResponse returns all the information stored about a single user
+// readUserResponse contains a single user to be returned to the client
 type readUserResponse struct {
 	ID   int64
 	Name string
 }
 
-// updateUserResponse contains the information about the newly updated user
+// updateUserResponse contains a newly updated user to be returned to the client
 type updateUserResponse struct {
 	ID   int64
 	Name string
@@ -102,7 +102,7 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := env.dao.CreateUser(dao.CreateUserInput{
+	user, err := env.dao.CreateUser(dao.CreateUserInput{
 		Name: req.Name,
 	})
 	if err != nil {
@@ -110,9 +110,10 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
+
 	json.NewEncoder(w).Encode(createUserResponse{
-		ID:   resp.ID,
-		Name: resp.Name,
+		ID:   user.ID,
+		Name: user.Name,
 	})
 }
 
@@ -136,6 +137,7 @@ func (env *env) readUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
 	json.NewEncoder(w).Encode(readUserResponse{
 		ID:   user.ID,
 		Name: user.Name,
@@ -164,7 +166,7 @@ func (env *env) updateUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := env.dao.UpdateUser(dao.UpdateUserInput{
+	user, err := env.dao.UpdateUser(dao.UpdateUserInput{
 		ID:   userID,
 		Name: req.Name,
 	})
@@ -180,8 +182,8 @@ func (env *env) updateUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(updateUserResponse{
-		ID:   resp.ID,
-		Name: resp.Name,
+		ID:   user.ID,
+		Name: user.Name,
 	})
 }
 
@@ -205,5 +207,6 @@ func (env *env) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
 	json.NewEncoder(w).Encode(struct{}{})
 }
