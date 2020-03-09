@@ -34,7 +34,7 @@ type createUserResponse struct {
 	Name string
 }
 
-// readUserResponse contains a single use to be returned to the client
+// readUserResponse contains a single user to be returned to the client
 type readUserResponse struct {
 	ID   int64
 	Name string
@@ -124,7 +124,7 @@ func (env *env) readUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	match, err := env.dao.ReadUser(dao.ReadUserInput{
+	user, err := env.dao.ReadUser(dao.ReadUserInput{
 		ID: userID,
 	})
 	if err != nil {
@@ -139,8 +139,8 @@ func (env *env) readUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(readUserResponse{
-		ID:   match.ID,
-		Name: match.Name,
+		ID:   user.ID,
+		Name: user.Name,
 	})
 }
 

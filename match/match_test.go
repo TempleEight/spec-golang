@@ -14,7 +14,7 @@ type MockDAO struct {
 }
 
 type MockComm struct {
-	UserIDs []int
+	UserIDs []int64
 }
 
 func (md *MockDAO) ListMatch() (*[]dao.Match, error) {
@@ -90,7 +90,7 @@ func (md *MockDAO) DeleteMatch(input dao.DeleteMatchInput) error {
 
 func (mc *MockComm) CheckUser(userID int64) (bool, error) {
 	for _, id := range mc.UserIDs {
-		if int64(id) == userID {
+		if id == userID {
 			return true, nil
 		}
 	}
