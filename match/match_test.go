@@ -107,8 +107,8 @@ func makeRequest(env env, method string, url string, body string) (*httptest.Res
 	return rec, nil
 }
 
-// Test that a match can be created successfully, assuming each user exists
-func TestMatchCreateHandlerSucceeds(t *testing.T) {
+// Test that a single match can be created successfully
+func TestCreateMatchHandlerSucceeds(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
 		&mockComm{userIDs: []int64{0, 1}},
@@ -120,7 +120,7 @@ func TestMatchCreateHandlerSucceeds(t *testing.T) {
 	}
 
 	if res.Code != http.StatusOK {
-		t.Errorf("Wrong status code %v", res.Code)
+		t.Errorf("Wrong status code: %v", res.Code)
 	}
 
 	received := res.Body.String()
@@ -131,7 +131,7 @@ func TestMatchCreateHandlerSucceeds(t *testing.T) {
 }
 
 // Test that a match is not created if UserOne doesn't exist
-func TestMatchCreateHandlerFailsOnInvalidUserOne(t *testing.T) {
+func TestCreateMatchHandlerFailsOnInvalidUserOne(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
 		&mockComm{userIDs: []int64{0, 1}},
@@ -143,12 +143,12 @@ func TestMatchCreateHandlerFailsOnInvalidUserOne(t *testing.T) {
 	}
 
 	if res.Code != http.StatusBadRequest {
-		t.Errorf("Wrong status code %v", res.Code)
+		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }
 
 // Test that a match is not created if UserTwo doesn't exist
-func TestMatchCreateHandlerFailsOnInvalidUserTwo(t *testing.T) {
+func TestCreateMatchHandlerFailsOnInvalidUserTwo(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
 		&mockComm{userIDs: []int64{0, 1}},
@@ -160,12 +160,12 @@ func TestMatchCreateHandlerFailsOnInvalidUserTwo(t *testing.T) {
 	}
 
 	if res.Code != http.StatusBadRequest {
-		t.Errorf("Wrong status code %v", res.Code)
+		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }
 
 // Test that a match is not created if every reference doesn't exist
-func TestMatchCreateHandlerFailsOnAllInvalidReferences(t *testing.T) {
+func TestCreateMatchHandlerFailsOnAllInvalidReferences(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
 		&mockComm{userIDs: []int64{0, 1}},
@@ -177,12 +177,12 @@ func TestMatchCreateHandlerFailsOnAllInvalidReferences(t *testing.T) {
 	}
 
 	if res.Code != http.StatusBadRequest {
-		t.Errorf("Wrong status code %v", res.Code)
+		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }
 
 // Test that a match is not created if the request body is not complete
-func TestMatchCreateHandlerFailsOnOnlyProvidingOneUser(t *testing.T) {
+func TestCreateMatchHandlerFailsOnOnlyProvidingOneUser(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
 		&mockComm{userIDs: []int64{0, 1}},
@@ -194,12 +194,12 @@ func TestMatchCreateHandlerFailsOnOnlyProvidingOneUser(t *testing.T) {
 	}
 
 	if res.Code != http.StatusBadRequest {
-		t.Errorf("Wrong status code %v", res.Code)
+		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }
 
 // Test that creating a match fails if the request body is malformed
-func TestMatchCreateHandlerFailsOnMalformedJSONBody(t *testing.T) {
+func TestCreateMatchHandlerFailsOnMalformedJSONBody(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
 		&mockComm{userIDs: []int64{0, 1}},
@@ -211,6 +211,6 @@ func TestMatchCreateHandlerFailsOnMalformedJSONBody(t *testing.T) {
 	}
 
 	if res.Code != http.StatusBadRequest {
-		t.Errorf("Wrong status code %v", res.Code)
+		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }
