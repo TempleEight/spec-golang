@@ -77,7 +77,7 @@ func TestCreateUserHandlerSucceeds(t *testing.T) {
 		&MockDAO{UserList: make([]dao.User, 0)},
 	}
 
-	// Make a single user
+	// Create a single user
 	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
@@ -100,7 +100,7 @@ func TestCreateUserHandlerFailsOnEmptyParameter(t *testing.T) {
 		&MockDAO{UserList: make([]dao.User, 0)},
 	}
 
-	// Make a single user
+	// Create a single user
 	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": ""}`)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
@@ -117,7 +117,7 @@ func TestCreateUserHandlerFailsOnMalformedJSONBody(t *testing.T) {
 		&MockDAO{UserList: make([]dao.User, 0)},
 	}
 
-	// Make a single user
+	// Create a single user
 	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name"`)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
@@ -134,7 +134,7 @@ func TestCreateUserHandlerFailsOnNoBody(t *testing.T) {
 		&MockDAO{UserList: make([]dao.User, 0)},
 	}
 
-	// Make a single user
+	// Create a single user
 	res, err := makeRequest(mockEnv, http.MethodPost, "/user", "")
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
@@ -151,7 +151,7 @@ func TestReadUserHandlerSucceeds(t *testing.T) {
 		&MockDAO{UserList: make([]dao.User, 0)},
 	}
 
-	// Make a single user
+	// Create a single user
 	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
@@ -191,7 +191,7 @@ func TestReadUserHandlerFailsOnEmptyID(t *testing.T) {
 	}
 }
 
-// Test that providing a non existent ID to the read endpoint fails
+// Test that providing a non-existent ID to the read endpoint fails
 func TestReadUserHandlerFailsOnNonExistentID(t *testing.T) {
 	mockEnv := env{
 		&MockDAO{UserList: make([]dao.User, 0)},
@@ -231,7 +231,7 @@ func TestUpdateUserHandlerSucceeds(t *testing.T) {
 		&MockDAO{UserList: make([]dao.User, 0)},
 	}
 
-	// Make a single user
+	// Create a single user
 	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
@@ -260,7 +260,7 @@ func TestUpdateUserHandlerFailsOnEmptyParameter(t *testing.T) {
 		&MockDAO{UserList: make([]dao.User, 0)},
 	}
 
-	// Make a single user
+	// Create a single user
 	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
@@ -283,7 +283,7 @@ func TestUpdateUserHandlerFailsOnMalformedJSONBody(t *testing.T) {
 		&MockDAO{UserList: make([]dao.User, 0)},
 	}
 
-	// Make a single user
+	// Create a single user
 	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
@@ -306,7 +306,7 @@ func TestUpdateUserHandlerFailsOnNoBody(t *testing.T) {
 		&MockDAO{UserList: make([]dao.User, 0)},
 	}
 
-	// Make a single user
+	// Create a single user
 	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
@@ -340,7 +340,7 @@ func TestUpdateUserHandlerFailsOnEmptyID(t *testing.T) {
 	}
 }
 
-// Test that providing a non existent ID to the update endpoint fails
+// Test that providing a non-existent ID to the update endpoint fails
 func TestUpdateUserHandlerFailsOnNonExistentID(t *testing.T) {
 	mockEnv := env{
 		&MockDAO{UserList: make([]dao.User, 0)},
@@ -380,7 +380,7 @@ func TestDeleteUserHandlerSucceeds(t *testing.T) {
 		&MockDAO{UserList: make([]dao.User, 0)},
 	}
 
-	// Make a single user
+	// Create a single user
 	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
@@ -420,7 +420,7 @@ func TestDeleteUserHandlerFailsOnEmptyID(t *testing.T) {
 	}
 }
 
-// Test that providing a non existent ID to the delete endpoint fails
+// Test that providing a non-existent ID to the delete endpoint fails
 func TestDeleteUserHandlerFailsOnNonExistentID(t *testing.T) {
 	mockEnv := env{
 		&MockDAO{UserList: make([]dao.User, 0)},
