@@ -14,20 +14,62 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// env defines the environment that requests are executed within
+// env defines the environment that requests should be executed within
 type env struct {
 	dao  dao.Datastore
 	comm comm.Comm
 }
 
-func Router(env Env) *mux.Router {
+// createMatchRequest contains the client-provided information required to create a single match
+type createMatchRequest struct {
+	UserOne *int64 `valid:"-"`
+	UserTwo *int64 `valid:"-"`
+}
+
+// updateMatchRequest contains the client-provided information required to update a single match, excluding ID
+type updateMatchRequest struct {
+	UserOne *int64 `valid:"-"`
+	UserTwo *int64 `valid:"-"`
+}
+
+// listMatchResponse contains a single match list to be returned to the client
+type listMatchResponse struct {
+	matchList []readMatchResponse
+}
+
+// createMatchResponse contains a newly created match to be returned to the client
+type createMatchResponse struct {
+	ID        int64
+	UserOne   int64
+	UserTwo   int64
+	MatchedOn string
+}
+
+// readMatchResponse contains a single match to be returned to the client
+type readMatchResponse struct {
+	ID        int64
+	UserOne   int64
+	UserTwo   int64
+	MatchedOn string
+}
+
+// updateMatchResponse contains a newly updated match to be returned to the client
+type updateMatchResponse struct {
+	ID        int64
+	UserOne   int64
+	UserTwo   int64
+	MatchedOn string
+}
+
+// router generates a router for this service
+func (env *env) router() *mux.Router {
 	r := mux.NewRouter()
 	// Mux directs to first matching route, i.e. the order matters
-	r.HandleFunc("/match/all", env.matchListHandler).Methods(http.MethodGet)
-	r.HandleFunc("/match", env.matchCreateHandler).Methods(http.MethodPost)
-	r.HandleFunc("/match/{id}", env.matchReadHandler).Methods(http.MethodGet)
-	r.HandleFunc("/match/{id}", env.matchUpdateHandler).Methods(http.MethodPut)
-	r.HandleFunc("/match/{id}", env.matchDeleteHandler).Methods(http.MethodDelete)
+	r.HandleFunc("/match/all", env.listMatchHandler).Methods(http.MethodGet)
+	r.HandleFunc("/match", env.createMatchHandler).Methods(http.MethodPost)
+	r.HandleFunc("/match/{id}", env.readMatchHandler).Methods(http.MethodGet)
+	r.HandleFunc("/match/{id}", env.updateMatchHandler).Methods(http.MethodPut)
+	r.HandleFunc("/match/{id}", env.deleteMatchHandler).Methods(http.MethodDelete)
 	r.Use(jsonMiddleware)
 	return r
 }
@@ -50,9 +92,9 @@ func main() {
 	}
 	c := comm.Init(config)
 
-	env := Env{d, c}
+	env := env{d, c}
 
-	log.Fatal(http.ListenAndServe(":81", Router(env)))
+	log.Fatal(http.ListenAndServe(":81", env.router()))
 }
 
 func jsonMiddleware(next http.Handler) http.Handler {
@@ -63,7 +105,7 @@ func jsonMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func (env *Env) matchListHandler(w http.ResponseWriter, r *http.Request) {
+func (env *env) listMatchHandler(w http.ResponseWriter, r *http.Request) {
 	matchList, err := env.dao.ListMatch()
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
@@ -71,11 +113,23 @@ func (env *Env) matchListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(matchList)
+	matchListResp := listMatchResponse{
+		matchList: make([]readMatchResponse, 0),
+	}
+	for _, match := range *matchList {
+		matchListResp.matchList = append(matchListResp.matchList, readMatchResponse{
+			ID:        match.ID,
+			UserOne:   match.UserOne,
+			UserTwo:   match.UserTwo,
+			MatchedOn: match.MatchedOn,
+		})
+	}
+
+	json.NewEncoder(w).Encode(matchListResp)
 }
 
-func (env *Env) matchCreateHandler(w http.ResponseWriter, r *http.Request) {
-	var req dao.MatchCreateRequest
+func (env *env) createMatchHandler(w http.ResponseWriter, r *http.Request) {
+	var req createMatchRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
@@ -122,23 +176,34 @@ func (env *Env) matchCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := env.dao.CreateMatch(req)
+	match, err := env.dao.CreateMatch(dao.CreateMatchInput{
+		UserOne: *req.UserOne,
+		UserTwo: *req.UserTwo,
+	})
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(resp)
+
+	json.NewEncoder(w).Encode(createMatchResponse{
+		ID:        match.ID,
+		UserOne:   match.UserOne,
+		UserTwo:   match.UserTwo,
+		MatchedOn: match.MatchedOn,
+	})
 }
 
-func (env *Env) matchReadHandler(w http.ResponseWriter, r *http.Request) {
+func (env *env) readMatchHandler(w http.ResponseWriter, r *http.Request) {
 	matchID, err := util.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
 		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
 		return
 	}
 
-	match, err := env.dao.ReadMatch(matchID)
+	match, err := env.dao.ReadMatch(dao.ReadMatchInput{
+		ID: matchID,
+	})
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrMatchNotFound:
@@ -150,17 +215,22 @@ func (env *Env) matchReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(match)
+	json.NewEncoder(w).Encode(readMatchResponse{
+		ID:        match.ID,
+		UserOne:   match.UserOne,
+		UserTwo:   match.UserTwo,
+		MatchedOn: match.MatchedOn,
+	})
 }
 
-func (env *Env) matchUpdateHandler(w http.ResponseWriter, r *http.Request) {
+func (env *env) updateMatchHandler(w http.ResponseWriter, r *http.Request) {
 	matchID, err := util.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
 		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
 		return
 	}
 
-	var req dao.MatchUpdateRequest
+	var req updateMatchRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
@@ -206,7 +276,11 @@ func (env *Env) matchUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := env.dao.UpdateMatch(matchID, req)
+	match, err := env.dao.UpdateMatch(dao.UpdateMatchInput{
+		ID:      matchID,
+		UserOne: *req.UserOne,
+		UserTwo: *req.UserTwo,
+	})
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrMatchNotFound:
@@ -217,17 +291,25 @@ func (env *Env) matchUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	json.NewEncoder(w).Encode(resp)
+
+	json.NewEncoder(w).Encode(updateMatchResponse{
+		ID:        match.ID,
+		UserOne:   match.UserOne,
+		UserTwo:   match.UserTwo,
+		MatchedOn: match.MatchedOn,
+	})
 }
 
-func (env *Env) matchDeleteHandler(w http.ResponseWriter, r *http.Request) {
+func (env *env) deleteMatchHandler(w http.ResponseWriter, r *http.Request) {
 	matchID, err := util.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
 		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
 		return
 	}
 
-	err = env.dao.DeleteMatch(matchID)
+	err = env.dao.DeleteMatch(dao.DeleteMatchInput{
+		ID: matchID,
+	})
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrMatchNotFound:
@@ -238,5 +320,6 @@ func (env *Env) matchDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
 	json.NewEncoder(w).Encode(struct{}{})
 }

@@ -8,4 +8,5 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496
 	github.com/gorilla/mux v1.7.4
 	github.com/lib/pq v1.3.0
+	golang.org/x/tools v0.0.0-20200308013534-11ec41452d41 // indirect
 )

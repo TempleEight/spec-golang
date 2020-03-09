@@ -25,13 +25,13 @@ type env struct {
 	jwtCredential *comm.JWTCredential
 }
 
-// createAuthRequest contains the information required to create a new auth
+// createAuthRequest contains the client-provided information required to create a single auth
 type createAuthRequest struct {
 	Email    string `valid:"email,required"`
 	Password string `valid:"type(string),required,stringlength(8|64)"`
 }
 
-// readAuthRequest contains the information required to validate an existing auth
+// readAuthRequest contains the client-provided information required to validate an auth
 type readAuthRequest struct {
 	Email    string `valid:"email,required"`
 	Password string `valid:"type(string),required,stringlength(8|64)"`
@@ -47,6 +47,7 @@ type readAuthResponse struct {
 	AccessToken string
 }
 
+// router generates a router for this service
 func (env *env) router() *mux.Router {
 	r := mux.NewRouter()
 	r.HandleFunc("/auth", env.createAuthHandler).Methods(http.MethodPost)
