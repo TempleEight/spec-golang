@@ -232,3 +232,87 @@ func TestCreateMatchHandlerFailsOnAllInvalidReferences(t *testing.T) {
 		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }
+
+// Test that a single match can be successfully created and read back
+func TestReadMatchHandlerSucceeds(t *testing.T) {
+	mockEnv := env{
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []int64{0, 1}},
+	}
+
+	// Create a single match
+	_, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 0, "UserTwo": 1}`)
+	if err != nil {
+		t.Fatalf("Could not make POST request: %s", err.Error())
+	}
+
+	// Read that same match
+	res, err := makeRequest(mockEnv, http.MethodGet, "/match/0", "")
+	if err != nil {
+		t.Fatalf("Could not make GET request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusOK {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+
+	received := res.Body.String()
+	expected := `{"ID":0,"UserOne":0,"UserTwo":1,"MatchedOn":"2020-01-01T12:00:00.000000Z"}`
+	if expected != strings.TrimSuffix(received, "\n") {
+		t.Errorf("Handler returned incorrect body: received %+v, expected %+v", received, expected)
+	}
+}
+
+// Test that providing no ID to the read endpoint fails
+func TestReadMatchHandlerFailsOnEmptyID(t *testing.T) {
+	mockEnv := env{
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []int64{0, 1}},
+	}
+
+	res, err := makeRequest(mockEnv, http.MethodGet, "/match/", "")
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Not Found, since no route is defined for GET at /match
+	if res.Code != http.StatusNotFound {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that providing a non-existent ID to the read endpoint fails
+func TestReadMatchHandlerFailsOnNonExistentID(t *testing.T) {
+	mockEnv := env{
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []int64{0, 1}},
+	}
+
+	res, err := makeRequest(mockEnv, http.MethodGet, "/match/123456", "")
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Not Found, since no match exists with that given ID
+	if res.Code != http.StatusNotFound {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that providing a string ID to the read endpoint fails
+func TestReadUserHandlerFailsOnStringID(t *testing.T) {
+	mockEnv := env{
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []int64{0, 1}},
+	}
+
+	res, err := makeRequest(mockEnv, http.MethodGet, "/match/abcdef", "")
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Bad Request, since we require an integer
+	if res.Code != http.StatusBadRequest {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
