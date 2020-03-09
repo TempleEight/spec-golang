@@ -1,4 +1,4 @@
-CREATE TABLE Match (
+CREATE TABLE match (
     id SERIAL PRIMARY KEY,
     userOne int,
     userTwo int,

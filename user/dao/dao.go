@@ -17,7 +17,7 @@ type Datastore interface {
 	DeleteUser(input DeleteUserInput) error
 }
 
-// DAO encapsulates access to the database
+// DAO encapsulates access to the datastore
 type DAO struct {
 	DB *sql.DB
 }
@@ -29,31 +29,36 @@ type User struct {
 	Name   string
 }
 
-// CreateUserInput encapsulates the information required to create a single user
+// CreateUserInput encapsulates the information required to create a single user in the datastore
 type CreateUserInput struct {
 	AuthID int64
 	Name   string
 }
 
-// ReadUserInput encapsulates the information required to read a single user
+// ReadUserInput encapsulates the information required to read a single user in the datastore
 type ReadUserInput struct {
 	ID int64
 }
 
-// UpdateUserInput encapsulates the information required to update a single user
+// UpdateUserInput encapsulates the information required to update a single user in the datastore
 type UpdateUserInput struct {
 	ID   int64
 	Name string
 }
 
-// DeleteUserInput encapsulates the information required to delete a single user
+// DeleteUserInput encapsulates the information required to delete a single user in the datastore
 type DeleteUserInput struct {
 	ID int64
 }
 
-// Executes the query, returning the row
-func executeQueryWithRowResponse(db *sql.DB, query string, args ...interface{}) *sql.Row {
-	return db.QueryRow(query, args...)
+// Init opens the datastore connection, returning a DAO
+func Init(config *util.Config) (*DAO, error) {
+	connStr := fmt.Sprintf("user=%s dbname=%s host=%s sslmode=%s", config.User, config.DBName, config.Host, config.SSLMode)
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return nil, err
+	}
+	return &DAO{db}, nil
 }
 
 // Executes a query, returning the number of rows affected
@@ -66,19 +71,14 @@ func executeQuery(db *sql.DB, query string, args ...interface{}) (int64, error) 
 	return result.RowsAffected()
 }
 
-// Init opens the database connection
-func Init(config *util.Config) (*DAO, error) {
-	connStr := fmt.Sprintf("user=%s dbname=%s host=%s sslmode=%s", config.User, config.DBName, config.Host, config.SSLMode)
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		return nil, err
-	}
-	return &DAO{db}, nil
+// Executes a query, returning the row
+func executeQueryWithRowResponse(db *sql.DB, query string, args ...interface{}) *sql.Row {
+	return db.QueryRow(query, args...)
 }
 
-// CreateUser creates a new user in the database, returning the newly created user
+// CreateUser creates a new user in the datastore, returning the newly created user
 func (dao *DAO) CreateUser(input CreateUserInput) (*User, error) {
-	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO User_Temple (auth_id, name) VALUES ($1, $2) RETURNING *", input.AuthID, input.Name)
+	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO user_temple (auth_id, name) VALUES ($1, $2) RETURNING *", input.AuthID, input.Name)
 
 	var user User
 	err := row.Scan(&user.ID, &user.AuthID, &user.Name)
@@ -89,9 +89,9 @@ func (dao *DAO) CreateUser(input CreateUserInput) (*User, error) {
 	return &user, nil
 }
 
-// ReadUser returns the information about a user stored for a given ID
+// ReadUser returns the user in the datastore for a given ID
 func (dao *DAO) ReadUser(input ReadUserInput) (*User, error) {
-	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM User_Temple WHERE id = $1", input.ID)
+	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM user_temple WHERE id = $1", input.ID)
 
 	var user User
 	err := row.Scan(&user.ID, &user.Name)
@@ -107,9 +107,9 @@ func (dao *DAO) ReadUser(input ReadUserInput) (*User, error) {
 	return &user, nil
 }
 
-// UpdateUser updates a user in the database, returning an error if it fails
+// UpdateUser updates a user in the datastore, returning an error if it fails
 func (dao *DAO) UpdateUser(input UpdateUserInput) (*User, error) {
-	row := executeQueryWithRowResponse(dao.DB, "UPDATE User_Temple set Name = $1 WHERE Id = $2 RETURNING *", input.Name, input.ID)
+	row := executeQueryWithRowResponse(dao.DB, "UPDATE user_temple set name = $1 WHERE id = $2 RETURNING *", input.Name, input.ID)
 
 	var user User
 	err := row.Scan(&user.ID, &user.AuthID, &user.Name)
@@ -125,9 +125,9 @@ func (dao *DAO) UpdateUser(input UpdateUserInput) (*User, error) {
 	return &user, nil
 }
 
-// DeleteUser deletes a user in the database, returning an error if it fails or the user doesn't exist
+// DeleteUser deletes a user in the datastore
 func (dao *DAO) DeleteUser(input DeleteUserInput) error {
-	rowsAffected, err := executeQuery(dao.DB, "DELETE FROM User_Temple WHERE Id = $1", input.ID)
+	rowsAffected, err := executeQuery(dao.DB, "DELETE FROM user_temple WHERE id = $1", input.ID)
 	if err != nil {
 		return err
 	} else if rowsAffected == 0 {
