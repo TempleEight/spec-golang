@@ -93,7 +93,7 @@ func TestCreateUserHandlerSucceeds(t *testing.T) {
 	}
 
 	if res.Code != http.StatusOK {
-		t.Errorf("Wrong status code %v", res.Code)
+		t.Errorf("Wrong status code: %v", res.Code)
 	}
 
 	received := res.Body.String()
@@ -133,7 +133,7 @@ func TestCreateUserHandlerFailsOnMalformedJSONBody(t *testing.T) {
 	}
 
 	if res.Code != http.StatusBadRequest {
-		t.Errorf("Wrong status code %v", res.Code)
+		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }
 
@@ -361,7 +361,7 @@ func TestUpdateUserHandlerFailsOnNoBody(t *testing.T) {
 	}
 
 	if res.Code != http.StatusBadRequest {
-		t.Errorf("Wrong status code %v", res.Code)
+		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }
 
