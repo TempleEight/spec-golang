@@ -94,7 +94,7 @@ func (dao *DAO) ReadUser(input ReadUserInput) (*User, error) {
 	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM user_temple WHERE id = $1", input.ID)
 
 	var user User
-	err := row.Scan(&user.ID, &user.Name)
+	err := row.Scan(&user.ID, &user.AuthID, &user.Name)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
