@@ -1,0 +1,23 @@
+version: '3'
+
+services:
+  user:
+    build: 
+      context: .
+      dockerfile: test.Dockerfile
+    ports:
+      - "80:80" 
+    networks: 
+      - user-network 
+
+  user-db:
+    image: postgres:12.1 
+    environment:
+      - PGUSER=postgres
+    volumes:
+      - ./../user-db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks: 
+      - user-network 
+
+networks:
+  user-network:
