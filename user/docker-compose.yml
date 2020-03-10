@@ -5,8 +5,6 @@ services:
     build: 
       context: .
       dockerfile: test.Dockerfile
-    ports:
-      - "80:80" 
     networks: 
       - user-network 
 

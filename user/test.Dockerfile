@@ -9,4 +9,3 @@ COPY . .
 COPY config.json /etc/user-service/
 
 ENTRYPOINT CGO_ENABLED=0 go test -v -tags=it 
-
