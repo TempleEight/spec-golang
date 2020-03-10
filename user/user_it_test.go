@@ -75,7 +75,7 @@ func TestIntegrationUser(t *testing.T) {
 	}
 
 	received = res.Body.String()
-	expected = `{"AuthID":7}`
+	expected = `{"AuthID":1}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
