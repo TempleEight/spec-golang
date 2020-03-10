@@ -20,13 +20,11 @@ type mockDAO struct {
 func (md *mockDAO) CreateUser(input dao.CreateUserInput) (*dao.User, error) {
 	mockUser := dao.User{
 		ID:     int64(len(md.userList)),
-		AuthID: input.AuthID,
 		Name:   input.Name,
 	}
 	md.userList = append(md.userList, mockUser)
 	return &dao.User{
 		ID:     mockUser.ID,
-		AuthID: mockUser.AuthID,
 		Name:   mockUser.Name,
 	}, nil
 }
@@ -36,7 +34,6 @@ func (md *mockDAO) ReadUser(input dao.ReadUserInput) (*dao.User, error) {
 		if user.ID == input.ID {
 			return &dao.User{
 				ID:     user.ID,
-				AuthID: user.AuthID,
 				Name:   user.Name,
 			}, nil
 		}
@@ -50,7 +47,6 @@ func (md *mockDAO) UpdateUser(input dao.UpdateUserInput) (*dao.User, error) {
 			md.userList[i].Name = user.Name
 			return &dao.User{
 				ID:     user.ID,
-				AuthID: user.AuthID,
 				Name:   input.Name,
 			}, nil
 		}
@@ -574,98 +570,3 @@ func TestDeleteUserHandlerFailsOnDifferentJWT(t *testing.T) {
 	}
 }
 
-// Test that a single user can be successfully created and then auth read back
-func TestReadUserAuthHandlerSucceeds(t *testing.T) {
-	mockEnv := env{
-		&mockDAO{userList: make([]dao.User, 0)},
-	}
-
-	// Create a single user
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
-	if err != nil {
-		t.Fatalf("Could not make POST request: %s", err.Error())
-	}
-
-	// Read that same user
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/0/auth", "", user0JWT)
-	if err != nil {
-		t.Fatalf("Could not make GET request: %s", err.Error())
-	}
-
-	if res.Code != http.StatusOK {
-		t.Errorf("Wrong status code: %v", res.Code)
-	}
-
-	received := res.Body.String()
-	expected := `{"AuthID":0}`
-	if expected != strings.TrimSuffix(received, "\n") {
-		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
-	}
-}
-
-// Test that providing no ID to the read auth endpoint fails
-func TestReadUserAuthHandlerFailsOnEmptyID(t *testing.T) {
-	mockEnv := env{
-		&mockDAO{userList: make([]dao.User, 0)},
-	}
-
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/auth", "", user0JWT)
-	if err != nil {
-		t.Fatalf("Could not make request: %s", err.Error())
-	}
-
-	// Bad request, since auth is interpreted as an ID
-	if res.Code != http.StatusBadRequest {
-		t.Errorf("Wrong status code: %v", res.Code)
-	}
-}
-
-// Test that providing a non-existent ID to the read auth endpoint fails
-func TestReadUserAuthHandlerFailsOnNonExistentID(t *testing.T) {
-	mockEnv := env{
-		&mockDAO{userList: make([]dao.User, 0)},
-	}
-
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/123456/auth", "", user0JWT)
-	if err != nil {
-		t.Fatalf("Could not make request: %s", err.Error())
-	}
-
-	// Not Found, since no user exists with that given ID
-	if res.Code != http.StatusNotFound {
-		t.Errorf("Wrong status code: %v", res.Code)
-	}
-}
-
-// Test that providing a string ID to the read auth endpoint fails
-func TestReadUserAuthHandlerFailsOnStringID(t *testing.T) {
-	mockEnv := env{
-		&mockDAO{userList: make([]dao.User, 0)},
-	}
-
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/abcdef/auth", "", user0JWT)
-	if err != nil {
-		t.Fatalf("Could not make request: %s", err.Error())
-	}
-
-	// Bad request, since we require an integer
-	if res.Code != http.StatusBadRequest {
-		t.Errorf("Wrong status code: %v", res.Code)
-	}
-}
-
-// Test that providing an empty JWT to the read endpoint fails
-func TestReadUserAuthHandlerFailsOnEmptyJWT(t *testing.T) {
-	mockEnv := env{
-		&mockDAO{userList: make([]dao.User, 0)},
-	}
-
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/0/auth", "", "")
-	if err != nil {
-		t.Fatalf("Could not make request: %s", err.Error())
-	}
-
-	if res.Code != http.StatusUnauthorized {
-		t.Errorf("Wrong status code: %v", res.Code)
-	}
-}

@@ -25,13 +25,11 @@ type DAO struct {
 // User encapsulates the object stored in the datastore
 type User struct {
 	ID     int64
-	AuthID int64
 	Name   string
 }
 
 // CreateUserInput encapsulates the information required to create a single user in the datastore
 type CreateUserInput struct {
-	AuthID int64
 	Name   string
 }
 
@@ -78,10 +76,10 @@ func executeQueryWithRowResponse(db *sql.DB, query string, args ...interface{}) 
 
 // CreateUser creates a new user in the datastore, returning the newly created user
 func (dao *DAO) CreateUser(input CreateUserInput) (*User, error) {
-	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO user_temple (auth_id, name) VALUES ($1, $2) RETURNING *", input.AuthID, input.Name)
+	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO user_temple (name) VALUES ($1) RETURNING *", input.Name)
 
 	var user User
-	err := row.Scan(&user.ID, &user.AuthID, &user.Name)
+	err := row.Scan(&user.ID, &user.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +92,7 @@ func (dao *DAO) ReadUser(input ReadUserInput) (*User, error) {
 	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM user_temple WHERE id = $1", input.ID)
 
 	var user User
-	err := row.Scan(&user.ID, &user.AuthID, &user.Name)
+	err := row.Scan(&user.ID, &user.Name)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
@@ -112,7 +110,7 @@ func (dao *DAO) UpdateUser(input UpdateUserInput) (*User, error) {
 	row := executeQueryWithRowResponse(dao.DB, "UPDATE user_temple set name = $1 WHERE id = $2 RETURNING *", input.Name, input.ID)
 
 	var user User
-	err := row.Scan(&user.ID, &user.AuthID, &user.Name)
+	err := row.Scan(&user.ID, &user.Name)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
