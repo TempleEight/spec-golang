@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 
 func TestIntegrationUser(t *testing.T) {
 	// Create user
-	res, err := makeRequest(environment, http.MethodPost, "/user", `{"Name": "Jay"}`, user1JWT)
+	res, err := makeRequest(environment, http.MethodPost, "/user", `{"Name": "Jay", "Email": "jay@test.com", "Password": "BlackcurrantCrush123"}`, user1JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -94,5 +94,23 @@ func TestIntegrationUser(t *testing.T) {
 	expected = `{}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
+	}
+}
+
+func TestIntegrationDuplicateUser(t *testing.T) {
+	// Create a single user
+	_, err := makeRequest(environment, http.MethodPost, "/user", `{"Name": "Jay", "Email": "jay@test.com", "Password": "BlackcurrantCrush123"}`, user1JWT)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Create the same single user
+	res, err := makeRequest(environment, http.MethodPost, "/user", `{"Name": "Jay", "Email": "jay@test.com", "Password": "BlackcurrantCrush123"}`, user1JWT)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusForbidden {
+		t.Fatalf("Wrong status code: %v", res.Code)
 	}
 }

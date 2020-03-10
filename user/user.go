@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/TempleEight/spec-golang/user/dao"
 	"github.com/TempleEight/spec-golang/user/util"
 	valid "github.com/asaskevich/govalidator"
@@ -20,7 +22,9 @@ type env struct {
 
 // createUserRequest contains the client-provided information required to create a single user
 type createUserRequest struct {
-	Name string `valid:"type(string),required,stringlength(2|255)"`
+	Name     string `valid:"type(string),required,stringlength(2|255)"`
+	Email    string `valid:"email,required"`
+	Password string `valid:"type(string),required,stringlength(8|1024)"`
 }
 
 // updateUserRequest contains the client-provided information required to update a single user, excluding ID
@@ -109,8 +113,32 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Hash and salt the password before storing
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not hash password: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+
+	auth, err := env.dao.CreateUserAuth(dao.CreateUserAuthInput{
+		Email:    req.Email,
+		Password: string(hashedPassword),
+	})
+	if err != nil {
+		switch err {
+		case dao.ErrDuplicateAuth:
+			http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusForbidden)
+		default:
+			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			http.Error(w, errMsg, http.StatusInternalServerError)
+		}
+		return
+	}
+
 	user, err := env.dao.CreateUser(dao.CreateUserInput{
-		Name:   req.Name,
+		ID:   auth.ID,
+		Name: req.Name,
 	})
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))

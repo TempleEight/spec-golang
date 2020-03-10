@@ -15,26 +15,24 @@ const user1JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsI
 
 type mockDAO struct {
 	userList []dao.User
+	authList []dao.Auth
 }
 
 func (md *mockDAO) CreateUser(input dao.CreateUserInput) (*dao.User, error) {
 	mockUser := dao.User{
-		ID:     int64(len(md.userList)),
-		Name:   input.Name,
+		ID:   input.ID,
+		Name: input.Name,
 	}
 	md.userList = append(md.userList, mockUser)
-	return &dao.User{
-		ID:     mockUser.ID,
-		Name:   mockUser.Name,
-	}, nil
+	return &mockUser, nil
 }
 
 func (md *mockDAO) ReadUser(input dao.ReadUserInput) (*dao.User, error) {
 	for _, user := range md.userList {
 		if user.ID == input.ID {
 			return &dao.User{
-				ID:     user.ID,
-				Name:   user.Name,
+				ID:   user.ID,
+				Name: user.Name,
 			}, nil
 		}
 	}
@@ -46,8 +44,8 @@ func (md *mockDAO) UpdateUser(input dao.UpdateUserInput) (*dao.User, error) {
 		if user.ID == input.ID {
 			md.userList[i].Name = user.Name
 			return &dao.User{
-				ID:     user.ID,
-				Name:   input.Name,
+				ID:   user.ID,
+				Name: input.Name,
 			}, nil
 		}
 	}
@@ -64,13 +62,30 @@ func (md *mockDAO) DeleteUser(input dao.DeleteUserInput) error {
 	return dao.ErrUserNotFound(input.ID)
 }
 
+func (md *mockDAO) CreateUserAuth(input dao.CreateUserAuthInput) (*dao.Auth, error) {
+	// Check if auth already exists
+	for _, auth := range md.authList {
+		if auth.Email == input.Email {
+			return nil, dao.ErrDuplicateAuth
+		}
+	}
+
+	mockAuth := dao.Auth{
+		ID:       int64(len(md.authList)),
+		Email:    input.Email,
+		Password: input.Password,
+	}
+	md.authList = append(md.authList, mockAuth)
+	return &mockAuth, nil
+}
+
 func makeRequest(env env, method string, url string, body string, authToken string) (*httptest.ResponseRecorder, error) {
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest(method, url, strings.NewReader(body))
-	req.Header.Set("Authorization", "Bearer "+authToken)
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Set("Authorization", "Bearer "+authToken)
 
 	env.router().ServeHTTP(rec, req)
 	return rec, nil
@@ -83,7 +98,7 @@ func TestCreateUserHandlerSucceeds(t *testing.T) {
 	}
 
 	// Create a single user
-	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay", "Email": "jay@test.com", "Password": "BlackcurrantCrush123"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -106,7 +121,7 @@ func TestCreateUserHandlerFailsOnEmptyParameter(t *testing.T) {
 	}
 
 	// Create a single user
-	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": ""}`, user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "", "Email": "jay@test.com", "Password": "BlackcurrantCrush123"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -157,13 +172,36 @@ func TestCreateUserHandlerFailsOnEmptyJWT(t *testing.T) {
 	}
 
 	// Create a single user
-	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, "")
+	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay", "Email": "jay@test.com", "Password": "BlackcurrantCrush123"}`, "")
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
 	if res.Code != http.StatusUnauthorized {
 		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that providing the same request to the create endpoint fails
+func TestCreateAuthHandlerFailsOnDuplicate(t *testing.T) {
+	mockEnv := env{
+		&mockDAO{userList: make([]dao.User, 0)},
+	}
+
+	// Create a single user
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay", "Email": "jay@test.com", "Password": "BlackcurrantCrush123"}`, user0JWT)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Create the same single user
+	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay", "Email": "jay@test.com", "Password": "BlackcurrantCrush123"}`, user0JWT)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusForbidden {
+		t.Fatalf("Invalid response code: %d", res.Code)
 	}
 }
 
@@ -174,7 +212,7 @@ func TestReadUserHandlerSucceeds(t *testing.T) {
 	}
 
 	// Create a single user
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay", "Email": "jay@test.com", "Password": "BlackcurrantCrush123"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
@@ -253,7 +291,7 @@ func TestReadUserHandlerFailsOnEmptyJWT(t *testing.T) {
 		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/0", `{"Name": "Jay"}`, "")
+	res, err := makeRequest(mockEnv, http.MethodGet, "/user/0", "", "")
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -270,7 +308,7 @@ func TestUpdateUserHandlerSucceeds(t *testing.T) {
 	}
 
 	// Create a single user
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay", "Email": "jay@test.com", "Password": "BlackcurrantCrush123"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
@@ -299,7 +337,7 @@ func TestUpdateUserHandlerFailsOnEmptyParameter(t *testing.T) {
 	}
 
 	// Create a single user
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay", "Email": "jay@test.com", "Password": "BlackcurrantCrush123" }`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
@@ -322,7 +360,7 @@ func TestUpdateUserHandlerFailsOnMalformedJSONBody(t *testing.T) {
 	}
 
 	// Create a single user
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay", "Email": "jay@test.com", "Password": "BlackcurrantCrush123"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
@@ -345,7 +383,7 @@ func TestUpdateUserHandlerFailsOnNoBody(t *testing.T) {
 	}
 
 	// Create a single user
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay", "Email": "jay@test.com", "Password": "BlackcurrantCrush123"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
@@ -384,7 +422,7 @@ func TestUpdateUserHandlerFailsOnNonExistentID(t *testing.T) {
 		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/123456", `{"Name":"Will"}`, user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/123456", `{"Name":"Lewis"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -401,7 +439,7 @@ func TestUpdateUserHandlerFailsOnStringID(t *testing.T) {
 		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/abcdef", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/abcdef", `{"Name":"Lewis"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -418,7 +456,7 @@ func TestUpdateUserHandlerFailsOnEmptyJWT(t *testing.T) {
 		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name": "Jay"}`, "")
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name": "Lewis"}`, "")
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -435,7 +473,7 @@ func TestUpdateUserHandlerFailsOnDifferentJWT(t *testing.T) {
 	}
 
 	// Create a single user with user0JWT
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay", "Email": "jay@test.com", "Password": "BlackcurrantCrush123"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -458,7 +496,7 @@ func TestDeleteUserHandlerSucceeds(t *testing.T) {
 	}
 
 	// Create a single user
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay", "Email": "jay@test.com", "Password": "BlackcurrantCrush123"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
@@ -554,7 +592,7 @@ func TestDeleteUserHandlerFailsOnDifferentJWT(t *testing.T) {
 	}
 
 	// Create a single user with user0JWT
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay", "Email": "jay@test.com", "Password": "BlackcurrantCrush123"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -569,4 +607,3 @@ func TestDeleteUserHandlerFailsOnDifferentJWT(t *testing.T) {
 		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }
-

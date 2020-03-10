@@ -6,8 +6,11 @@ import (
 
 	"github.com/TempleEight/spec-golang/user/util"
 	// pq acts as the driver for SQL requests
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 )
+
+// https://www.postgresql.org/docs/9.3/errcodes-appendix.html
+const psqlUniqueViolation = "unique_violation"
 
 // Datastore provides the interface adopted by the DAO, allowing for mocking
 type Datastore interface {
@@ -15,6 +18,7 @@ type Datastore interface {
 	ReadUser(input ReadUserInput) (*User, error)
 	UpdateUser(input UpdateUserInput) (*User, error)
 	DeleteUser(input DeleteUserInput) error
+	CreateUserAuth(input CreateUserAuthInput) (*Auth, error)
 }
 
 // DAO encapsulates access to the datastore
@@ -24,13 +28,20 @@ type DAO struct {
 
 // User encapsulates the object stored in the datastore
 type User struct {
-	ID     int64
-	Name   string
+	ID   int64
+	Name string
+}
+
+type Auth struct {
+	ID       int64
+	Email    string
+	Password string
 }
 
 // CreateUserInput encapsulates the information required to create a single user in the datastore
 type CreateUserInput struct {
-	Name   string
+	ID   int64
+	Name string
 }
 
 // ReadUserInput encapsulates the information required to read a single user in the datastore
@@ -47,6 +58,12 @@ type UpdateUserInput struct {
 // DeleteUserInput encapsulates the information required to delete a single user in the datastore
 type DeleteUserInput struct {
 	ID int64
+}
+
+// CreateUserAuthInput encapsulates the information required to store an auth in the datastore
+type CreateUserAuthInput struct {
+	Email    string
+	Password string
 }
 
 // Init opens the datastore connection, returning a DAO
@@ -76,7 +93,7 @@ func executeQueryWithRowResponse(db *sql.DB, query string, args ...interface{}) 
 
 // CreateUser creates a new user in the datastore, returning the newly created user
 func (dao *DAO) CreateUser(input CreateUserInput) (*User, error) {
-	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO user_temple (name) VALUES ($1) RETURNING *", input.Name)
+	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO user_temple (id, name) VALUES ($1, $2) RETURNING *", input.ID, input.Name)
 
 	var user User
 	err := row.Scan(&user.ID, &user.Name)
@@ -133,4 +150,22 @@ func (dao *DAO) DeleteUser(input DeleteUserInput) error {
 	}
 
 	return nil
+}
+
+func (dao *DAO) CreateUserAuth(input CreateUserAuthInput) (*Auth, error) {
+	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO user_temple_auth (email, password) VALUES ($1, $2) RETURNING *", input.Email, input.Password)
+
+	var auth Auth
+	err := row.Scan(&auth.ID, &auth.Email, &auth.Password)
+	if err != nil {
+		// PQ specific error
+		if err, ok := err.(*pq.Error); ok {
+			if err.Code.Name() == psqlUniqueViolation {
+				return nil, ErrDuplicateAuth
+			}
+		}
+		return nil, err
+	}
+
+	return &auth, nil
 }
