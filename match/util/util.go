@@ -3,9 +3,18 @@ package util
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
 	"os"
 	"strconv"
+	"strings"
+
+	"github.com/dgrijalva/jwt-go"
 )
+
+// Auth contains the unique identifier for a given auth
+type Auth struct {
+	ID int64
+}
 
 // GetConfig returns a configuration object from decoding the given configuration file
 func GetConfig(filePath string) (*Config, error) {
@@ -46,4 +55,40 @@ func ExtractIDFromRequest(requestParams map[string]string) (int64, error) {
 	}
 
 	return id, nil
+}
+
+// ExtractAuthIDFromRequest extracts a token from a header of the form `Authorization: Bearer <token>`
+func ExtractAuthIDFromRequest(headers http.Header) (*Auth, error) {
+	authHeader := headers.Get("Authorization")
+	if len(authHeader) == 0 {
+		return nil, errors.New("Authorization header not provided")
+	}
+
+	// Extract and parse JWT
+	rawToken := strings.Replace(authHeader, "Bearer ", "", 1)
+	jwtParser := jwt.Parser{UseJSONNumber: true}
+	token, _, err := jwtParser.ParseUnverified(rawToken, jwt.MapClaims{})
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract claims from JWT
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, errors.New("JWT claims are invalid")
+	}
+
+	// Extract ID from JWT claims
+	id, ok := claims["id"]
+	if !ok {
+		return nil, errors.New("JWT does not contain an id")
+	}
+
+	// Convert to an integer
+	intID, err := id.(json.Number).Int64()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Auth{intID}, nil
 }
