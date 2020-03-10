@@ -2,5 +2,8 @@ sudo: required
 
 language: go
 
-script:
-  for svc in auth match user; do cd $svc && go test -v && cd ..; done
+script: 
+# Run all unit tests for auth and match 
+- for svc in auth match; do cd $svc && go test -v && cd ..; done 
+# Run unit and integration tests for user
+- for svc in user; do cd $svc && docker-compose up --build --abort-on-container-exit && cd ..; done
