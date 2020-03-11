@@ -194,7 +194,7 @@ paths:
             schema:
               type: integer
             required: true
-            description: ID of the match to get
+            description: ID of the user to get
       responses:
         200:
           description: User details
