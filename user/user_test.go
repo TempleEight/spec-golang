@@ -10,8 +10,8 @@ import (
 )
 
 // Define 2 JWTs with ID 0 and 1
-const user0JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjowLCJpc3MiOiJmRlM4S21WWXVLQUN5RjN3ZHBQS0hTUXFtWlZWd2pEcSJ9.KzUa-OpHEjFQlsSy7YZI1Kppu4eIU5nyivLvivWcpRc"
-const user1JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjoxLCJpc3MiOiJmRlM4S21WWXVLQUN5RjN3ZHBQS0hTUXFtWlZWd2pEcSJ9.kXaTT0Yl3-zeWreKOl5Zd6dG1gJG49JSS0zfdBRG_oU"
+const user0JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjoiMDAwMDAwMDAtMTIzNC01Njc4LTkwMTItMDAwMDAwMDAwMDAwIiwiaXNzIjoiZkZTOEttVll1S0FDeUYzd2RwUEtIU1FxbVpWVndqRHEifQ.jMpelsEJUwONtRCQnQCo2v5Ph7cZHloc5R1OvKkU2Ck"
+const user1JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjoiMDAwMDAwMDAtMTIzNC01Njc4LTkwMTItMDAwMDAwMDAwMDAxIiwiaXNzIjoiZkZTOEttVll1S0FDeUYzd2RwUEtIU1FxbVpWVndqRHEifQ.lMmkaK9L2kD2ZnbblSlXdz93cz6jZCALR0KoGlzQKpc"
 
 type mockDAO struct {
 	userList []dao.User
@@ -19,26 +19,23 @@ type mockDAO struct {
 
 func (md *mockDAO) CreateUser(input dao.CreateUserInput) (*dao.User, error) {
 	mockUser := dao.User{
-		ID:     int64(len(md.userList)),
-		Name:   input.Name,
+		ID:   input.ID,
+		Name: input.Name,
 	}
 	md.userList = append(md.userList, mockUser)
-	return &dao.User{
-		ID:     mockUser.ID,
-		Name:   mockUser.Name,
-	}, nil
+	return &mockUser, nil
 }
 
 func (md *mockDAO) ReadUser(input dao.ReadUserInput) (*dao.User, error) {
 	for _, user := range md.userList {
 		if user.ID == input.ID {
 			return &dao.User{
-				ID:     user.ID,
-				Name:   user.Name,
+				ID:   user.ID,
+				Name: user.Name,
 			}, nil
 		}
 	}
-	return nil, dao.ErrUserNotFound(input.ID)
+	return nil, dao.ErrUserNotFound(input.ID.String())
 }
 
 func (md *mockDAO) UpdateUser(input dao.UpdateUserInput) (*dao.User, error) {
@@ -46,12 +43,12 @@ func (md *mockDAO) UpdateUser(input dao.UpdateUserInput) (*dao.User, error) {
 		if user.ID == input.ID {
 			md.userList[i].Name = user.Name
 			return &dao.User{
-				ID:     user.ID,
-				Name:   input.Name,
+				ID:   user.ID,
+				Name: input.Name,
 			}, nil
 		}
 	}
-	return nil, dao.ErrUserNotFound(input.ID)
+	return nil, dao.ErrUserNotFound(input.ID.String())
 }
 
 func (md *mockDAO) DeleteUser(input dao.DeleteUserInput) error {
@@ -61,7 +58,7 @@ func (md *mockDAO) DeleteUser(input dao.DeleteUserInput) error {
 			return nil
 		}
 	}
-	return dao.ErrUserNotFound(input.ID)
+	return dao.ErrUserNotFound(input.ID.String())
 }
 
 func makeRequest(env env, method string, url string, body string, authToken string) (*httptest.ResponseRecorder, error) {
@@ -93,7 +90,7 @@ func TestCreateUserHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"ID":0,"Name":"Jay"}`
+	expected := `{"ID":"00000000-1234-5678-9012-000000000000","Name":"Jay"}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
@@ -180,7 +177,7 @@ func TestReadUserHandlerSucceeds(t *testing.T) {
 	}
 
 	// Read that same user
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/0", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodGet, "/user/00000000-1234-5678-9012-000000000000", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make GET request: %s", err.Error())
 	}
@@ -190,7 +187,7 @@ func TestReadUserHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"ID":0,"Name":"Jay"}`
+	expected := `{"ID":"00000000-1234-5678-9012-000000000000","Name":"Jay"}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
@@ -219,7 +216,7 @@ func TestReadUserHandlerFailsOnNonExistentID(t *testing.T) {
 		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/123456", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodGet, "/user/00000000-0000-0000-0000-000000000000", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -230,30 +227,13 @@ func TestReadUserHandlerFailsOnNonExistentID(t *testing.T) {
 	}
 }
 
-// Test that providing a string ID to the read endpoint fails
-func TestReadUserHandlerFailsOnStringID(t *testing.T) {
-	mockEnv := env{
-		&mockDAO{userList: make([]dao.User, 0)},
-	}
-
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/abcdef", "", user0JWT)
-	if err != nil {
-		t.Fatalf("Could not make request: %s", err.Error())
-	}
-
-	// Bad request, since we require an integer
-	if res.Code != http.StatusBadRequest {
-		t.Errorf("Wrong status code: %v", res.Code)
-	}
-}
-
 // Test that providing an empty JWT to the read endpoint fails
 func TestReadUserHandlerFailsOnEmptyJWT(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/0", `{"Name": "Jay"}`, "")
+	res, err := makeRequest(mockEnv, http.MethodGet, "/user/00000000-1234-5678-9012-000000000000", `{"Name": "Jay"}`, "")
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -276,7 +256,7 @@ func TestUpdateUserHandlerSucceeds(t *testing.T) {
 	}
 
 	// Update that same user
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name": "Lewis"}`, user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-1234-5678-9012-000000000000", `{"Name": "Lewis"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make PUT request: %s", err.Error())
 	}
@@ -286,7 +266,7 @@ func TestUpdateUserHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"ID":0,"Name":"Lewis"}`
+	expected := `{"ID":"00000000-1234-5678-9012-000000000000","Name":"Lewis"}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
@@ -305,7 +285,7 @@ func TestUpdateUserHandlerFailsOnEmptyParameter(t *testing.T) {
 	}
 
 	// Update that same user
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name": ""}`, user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-1234-5678-9012-000000000000", `{"Name": ""}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make PUT request: %s", err.Error())
 	}
@@ -328,7 +308,7 @@ func TestUpdateUserHandlerFailsOnMalformedJSONBody(t *testing.T) {
 	}
 
 	// Update that same user
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name"}`, user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-1234-5678-9012-000000000000", `{"Name"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make PUT request: %s", err.Error())
 	}
@@ -351,7 +331,7 @@ func TestUpdateUserHandlerFailsOnNoBody(t *testing.T) {
 	}
 
 	// Update that same user
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-1234-5678-9012-000000000000", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make PUT request: %s", err.Error())
 	}
@@ -384,7 +364,7 @@ func TestUpdateUserHandlerFailsOnNonExistentID(t *testing.T) {
 		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/123456", `{"Name":"Will"}`, user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-0000-0000-0000-000000000000", `{"Name":"Will"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -395,30 +375,13 @@ func TestUpdateUserHandlerFailsOnNonExistentID(t *testing.T) {
 	}
 }
 
-// Test that providing a string ID to the update endpoint fails
-func TestUpdateUserHandlerFailsOnStringID(t *testing.T) {
-	mockEnv := env{
-		&mockDAO{userList: make([]dao.User, 0)},
-	}
-
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/abcdef", "", user0JWT)
-	if err != nil {
-		t.Fatalf("Could not make request: %s", err.Error())
-	}
-
-	// Bad request, since we require an integer
-	if res.Code != http.StatusBadRequest {
-		t.Errorf("Wrong status code: %v", res.Code)
-	}
-}
-
 // Test that providing an empty JWT to the update endpoint fails
 func TestUpdateUserHandlerFailsOnEmptyJWT(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name": "Jay"}`, "")
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-1234-5678-9012-000000000000", `{"Name": "Jay"}`, "")
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -441,7 +404,7 @@ func TestUpdateUserHandlerFailsOnDifferentJWT(t *testing.T) {
 	}
 
 	// Update a single user with user1JWT
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name": "Lewis"}`, user1JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-1234-5678-9012-000000000000", `{"Name": "Lewis"}`, user1JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -464,7 +427,7 @@ func TestDeleteUserHandlerSucceeds(t *testing.T) {
 	}
 
 	// Delete that same user
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/0", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/00000000-1234-5678-9012-000000000000", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make DELETE request: %s", err.Error())
 	}
@@ -503,7 +466,7 @@ func TestDeleteUserHandlerFailsOnNonExistentID(t *testing.T) {
 		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/123456", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/00000000-0000-0000-0000-000000000000", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -514,30 +477,13 @@ func TestDeleteUserHandlerFailsOnNonExistentID(t *testing.T) {
 	}
 }
 
-// Test that providing a string ID to the delete endpoint fails
-func TestDeleteUserHandlerFailsOnStringID(t *testing.T) {
-	mockEnv := env{
-		&mockDAO{userList: make([]dao.User, 0)},
-	}
-
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/abcdef", "", user0JWT)
-	if err != nil {
-		t.Fatalf("Could not make request: %s", err.Error())
-	}
-
-	// Bad request, since we require an integer
-	if res.Code != http.StatusBadRequest {
-		t.Errorf("Wrong status code: %v", res.Code)
-	}
-}
-
 // Test that providing an empty JWT to the delete endpoint fails
 func TestDeleteUserHandlerFailsOnEmptyJWT(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/0", "", "")
+	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/00000000-1234-5678-9012-000000000000", "", "")
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -560,7 +506,7 @@ func TestDeleteUserHandlerFailsOnDifferentJWT(t *testing.T) {
 	}
 
 	// Delete a single user with user1JWT
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/0", "", user1JWT)
+	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/00000000-1234-5678-9012-000000000000", "", user1JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -569,4 +515,3 @@ func TestDeleteUserHandlerFailsOnDifferentJWT(t *testing.T) {
 		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }
-

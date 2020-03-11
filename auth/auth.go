@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -196,7 +197,7 @@ func (env *env) readAuthHandler(w http.ResponseWriter, r *http.Request) {
 // Create an access token with a 24 hour lifetime
 func createToken(id int, issuer string, secret string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":  id,
+		"id":  strconv.Itoa(id),
 		"iss": issuer,
 		"exp": time.Now().Add(24 * time.Hour).Unix(),
 	})

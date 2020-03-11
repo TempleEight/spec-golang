@@ -1,4 +1,4 @@
 CREATE TABLE user_temple (
-    id SERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY,
     name TEXT
 );

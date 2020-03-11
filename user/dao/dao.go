@@ -7,6 +7,7 @@ import (
 	"github.com/TempleEight/spec-golang/user/util"
 	// pq acts as the driver for SQL requests
 	_ "github.com/lib/pq"
+	uuid "github.com/satori/go.uuid"
 )
 
 // Datastore provides the interface adopted by the DAO, allowing for mocking
@@ -24,29 +25,30 @@ type DAO struct {
 
 // User encapsulates the object stored in the datastore
 type User struct {
-	ID     int64
-	Name   string
+	ID   uuid.UUID
+	Name string
 }
 
 // CreateUserInput encapsulates the information required to create a single user in the datastore
 type CreateUserInput struct {
-	Name   string
+	ID   uuid.UUID
+	Name string
 }
 
 // ReadUserInput encapsulates the information required to read a single user in the datastore
 type ReadUserInput struct {
-	ID int64
+	ID uuid.UUID
 }
 
 // UpdateUserInput encapsulates the information required to update a single user in the datastore
 type UpdateUserInput struct {
-	ID   int64
+	ID   uuid.UUID
 	Name string
 }
 
 // DeleteUserInput encapsulates the information required to delete a single user in the datastore
 type DeleteUserInput struct {
-	ID int64
+	ID uuid.UUID
 }
 
 // Init opens the datastore connection, returning a DAO
@@ -76,7 +78,7 @@ func executeQueryWithRowResponse(db *sql.DB, query string, args ...interface{}) 
 
 // CreateUser creates a new user in the datastore, returning the newly created user
 func (dao *DAO) CreateUser(input CreateUserInput) (*User, error) {
-	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO user_temple (name) VALUES ($1) RETURNING *", input.Name)
+	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO user_temple (id, name) VALUES ($1, $2) RETURNING *", input.ID, input.Name)
 
 	var user User
 	err := row.Scan(&user.ID, &user.Name)
@@ -96,7 +98,7 @@ func (dao *DAO) ReadUser(input ReadUserInput) (*User, error) {
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			return nil, ErrUserNotFound(input.ID)
+			return nil, ErrUserNotFound(input.ID.String())
 		default:
 			return nil, err
 		}
@@ -114,7 +116,7 @@ func (dao *DAO) UpdateUser(input UpdateUserInput) (*User, error) {
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			return nil, ErrUserNotFound(input.ID)
+			return nil, ErrUserNotFound(input.ID.String())
 		default:
 			return nil, err
 		}
@@ -129,7 +131,7 @@ func (dao *DAO) DeleteUser(input DeleteUserInput) error {
 	if err != nil {
 		return err
 	} else if rowsAffected == 0 {
-		return ErrUserNotFound(input.ID)
+		return ErrUserNotFound(input.ID.String())
 	}
 
 	return nil

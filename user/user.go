@@ -11,6 +11,7 @@ import (
 	"github.com/TempleEight/spec-golang/user/util"
 	valid "github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
+	uuid "github.com/satori/go.uuid"
 )
 
 // env defines the environment that requests should be executed within
@@ -30,19 +31,19 @@ type updateUserRequest struct {
 
 // createUserResponse contains a newly created user to be returned to the client
 type createUserResponse struct {
-	ID   int64
+	ID   uuid.UUID
 	Name string
 }
 
 // readUserResponse contains a single user to be returned to the client
 type readUserResponse struct {
-	ID   int64
+	ID   uuid.UUID
 	Name string
 }
 
 // updateUserResponse contains a newly updated user to be returned to the client
 type updateUserResponse struct {
-	ID   int64
+	ID   uuid.UUID
 	Name string
 }
 
@@ -87,7 +88,7 @@ func jsonMiddleware(next http.Handler) http.Handler {
 }
 
 func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
-	_, err := util.ExtractAuthIDFromRequest(r.Header)
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusUnauthorized)
@@ -110,7 +111,8 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := env.dao.CreateUser(dao.CreateUserInput{
-		Name:   req.Name,
+		ID:   auth.ID,
+		Name: req.Name,
 	})
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
