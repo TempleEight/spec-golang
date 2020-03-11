@@ -43,13 +43,13 @@ func TestIntegrationUser(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"ID":"1","Name":"Jay"}`
+	expected := `{"ID":"00000000-0000-0000-0000-000000000000","Name":"Jay"}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
 
 	// Read that same user
-	res, err = makeRequest(environment, http.MethodGet, "/user/1", "", user1JWT)
+	res, err = makeRequest(environment, http.MethodGet, "/user/0", "", user1JWT)
 	if err != nil {
 		t.Fatalf("Could not make GET request: %s", err.Error())
 	}
@@ -59,13 +59,13 @@ func TestIntegrationUser(t *testing.T) {
 	}
 
 	received = res.Body.String()
-	expected = `{"ID":"1","Name":"Jay"}`
+	expected = `{"ID":"00000000-0000-0000-0000-000000000000","Name":"Jay"}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
 
 	// Update that same user
-	res, err = makeRequest(environment, http.MethodPut, "/user/1", `{"Name": "Lewis"}`, user1JWT)
+	res, err = makeRequest(environment, http.MethodPut, "/user/0", `{"Name": "Lewis"}`, user1JWT)
 	if err != nil {
 		t.Fatalf("Could not make PUT request: %s", err.Error())
 	}
@@ -75,13 +75,13 @@ func TestIntegrationUser(t *testing.T) {
 	}
 
 	received = res.Body.String()
-	expected = `{"ID":"1","Name":"Lewis"}`
+	expected = `{"ID":"00000000-0000-0000-0000-000000000000","Name":"Lewis"}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
 
 	// Delete that same user
-	res, err = makeRequest(environment, http.MethodDelete, "/user/1", "", user1JWT)
+	res, err = makeRequest(environment, http.MethodDelete, "/user/0", "", user1JWT)
 	if err != nil {
 		t.Fatalf("Could not make DELETE request: %s", err.Error())
 	}
