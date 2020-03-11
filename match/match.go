@@ -121,7 +121,16 @@ func checkAuthorization(env *env, auth *util.Auth, matchID int64) (bool, error) 
 }
 
 func (env *env) listMatchHandler(w http.ResponseWriter, r *http.Request) {
-	matchList, err := env.dao.ListMatch()
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
+	matchList, err := env.dao.ListMatch(dao.ListMatchInput{
+		AuthID: auth.ID,
+	})
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)

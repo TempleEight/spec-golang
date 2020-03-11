@@ -11,7 +11,7 @@ import (
 
 // Datastore provides the interface adopted by the DAO, allowing for mocking
 type Datastore interface {
-	ListMatch() (*[]Match, error)
+	ListMatch(input ListMatchInput) (*[]Match, error)
 	CreateMatch(input CreateMatchInput) (*Match, error)
 	ReadMatch(input ReadMatchInput) (*Match, error)
 	UpdateMatch(input UpdateMatchInput) (*Match, error)
@@ -30,6 +30,11 @@ type Match struct {
 	UserOne   int64
 	UserTwo   int64
 	MatchedOn string
+}
+
+// ListMatchInput encapsulates the information required to read a match list in the datastore
+type ListMatchInput struct {
+	AuthID int64
 }
 
 // CreateMatchInput encapsulates the information required to create a single match in the datastore
@@ -87,9 +92,9 @@ func executeQueryWithRowResponses(db *sql.DB, query string, args ...interface{})
 	return db.Query(query, args...)
 }
 
-// ListMatch returns a list containing every match in the datastore
-func (dao *DAO) ListMatch() (*[]Match, error) {
-	rows, err := executeQueryWithRowResponses(dao.DB, "SELECT * FROM Match")
+// ListMatch returns a list containing every match in the datastore for a given ID
+func (dao *DAO) ListMatch(input ListMatchInput) (*[]Match, error) {
+	rows, err := executeQueryWithRowResponses(dao.DB, "SELECT * FROM Match WHERE id = $1", input.AuthID)
 	if err != nil {
 		return nil, err
 	}
