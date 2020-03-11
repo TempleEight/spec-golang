@@ -8,11 +8,12 @@ import (
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
+	uuid "github.com/satori/go.uuid"
 )
 
 // Auth contains the unique identifier for a given auth
 type Auth struct {
-	ID string
+	ID uuid.UUID
 }
 
 // GetConfig returns a configuration object from decoding the given configuration file
@@ -42,13 +43,13 @@ func CreateErrorJSON(message string) string {
 }
 
 // ExtractIDFromRequest extracts the parameter provided under parameter ID and converts it into a string
-func ExtractIDFromRequest(requestParams map[string]string) (string, error) {
+func ExtractIDFromRequest(requestParams map[string]string) (uuid.UUID, error) {
 	id := requestParams["id"]
 	if len(id) == 0 {
-		return "", errors.New("No ID provided")
+		return uuid.Nil, errors.New("No ID provided")
 	}
 
-	return id, nil
+	return uuid.FromString(id)
 }
 
 // ExtractAuthIDFromRequest extracts a token from a header of the form `Authorization: Bearer <token>`
@@ -78,5 +79,10 @@ func ExtractAuthIDFromRequest(headers http.Header) (*Auth, error) {
 		return nil, errors.New("JWT does not contain an id")
 	}
 
-	return &Auth{id.(string)}, nil
+	uuid, err := uuid.FromString(id.(string))
+	if err != nil {
+		return nil, err
+	}
+
+	return &Auth{uuid}, nil
 }
