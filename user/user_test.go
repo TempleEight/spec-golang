@@ -10,8 +10,8 @@ import (
 )
 
 // Define 2 JWTs with ID 0 and 1
-const user0JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjoiMCIsImlzcyI6ImZGUzhLbVZZdUtBQ3lGM3dkcFBLSFNRcW1aVlZ3akRxIn0.FohTyHoXuX2PO8oLSxRczq_Lca2UoYPiruBC2p9psOk"
-const user1JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjoiMSIsImlzcyI6ImZGUzhLbVZZdUtBQ3lGM3dkcFBLSFNRcW1aVlZ3akRxIn0.zPtNhZAhfte8dBYNqfzfRf4HACeqk5kd_jw-sBfKnZ0"
+const user0JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjoiMDAwMDAwMDAtMTIzNC01Njc4LTkwMTItMDAwMDAwMDAwMDAwIiwiaXNzIjoiZkZTOEttVll1S0FDeUYzd2RwUEtIU1FxbVpWVndqRHEifQ.jMpelsEJUwONtRCQnQCo2v5Ph7cZHloc5R1OvKkU2Ck"
+const user1JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjoiMDAwMDAwMDAtMTIzNC01Njc4LTkwMTItMDAwMDAwMDAwMDAxIiwiaXNzIjoiZkZTOEttVll1S0FDeUYzd2RwUEtIU1FxbVpWVndqRHEifQ.lMmkaK9L2kD2ZnbblSlXdz93cz6jZCALR0KoGlzQKpc"
 
 type mockDAO struct {
 	userList []dao.User
@@ -90,7 +90,7 @@ func TestCreateUserHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"ID":"00000000-0000-0000-0000-000000000000","Name":"Jay"}`
+	expected := `{"ID":"00000000-1234-5678-9012-000000000000","Name":"Jay"}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
@@ -177,7 +177,7 @@ func TestReadUserHandlerSucceeds(t *testing.T) {
 	}
 
 	// Read that same user
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/0", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodGet, "/user/00000000-1234-5678-9012-000000000000", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make GET request: %s", err.Error())
 	}
@@ -187,7 +187,7 @@ func TestReadUserHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"ID":"00000000-0000-0000-0000-000000000000","Name":"Jay"}`
+	expected := `{"ID":"00000000-1234-5678-9012-000000000000","Name":"Jay"}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
@@ -233,7 +233,7 @@ func TestReadUserHandlerFailsOnEmptyJWT(t *testing.T) {
 		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/0", `{"Name": "Jay"}`, "")
+	res, err := makeRequest(mockEnv, http.MethodGet, "/user/00000000-1234-5678-9012-000000000000", `{"Name": "Jay"}`, "")
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -256,7 +256,7 @@ func TestUpdateUserHandlerSucceeds(t *testing.T) {
 	}
 
 	// Update that same user
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name": "Lewis"}`, user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-1234-5678-9012-000000000000", `{"Name": "Lewis"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make PUT request: %s", err.Error())
 	}
@@ -266,7 +266,7 @@ func TestUpdateUserHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"ID":"00000000-0000-0000-0000-000000000000","Name":"Lewis"}`
+	expected := `{"ID":"00000000-1234-5678-9012-000000000000","Name":"Lewis"}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
@@ -285,7 +285,7 @@ func TestUpdateUserHandlerFailsOnEmptyParameter(t *testing.T) {
 	}
 
 	// Update that same user
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name": ""}`, user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-1234-5678-9012-000000000000", `{"Name": ""}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make PUT request: %s", err.Error())
 	}
@@ -308,7 +308,7 @@ func TestUpdateUserHandlerFailsOnMalformedJSONBody(t *testing.T) {
 	}
 
 	// Update that same user
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name"}`, user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-1234-5678-9012-000000000000", `{"Name"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make PUT request: %s", err.Error())
 	}
@@ -331,7 +331,7 @@ func TestUpdateUserHandlerFailsOnNoBody(t *testing.T) {
 	}
 
 	// Update that same user
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-1234-5678-9012-000000000000", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make PUT request: %s", err.Error())
 	}
@@ -381,7 +381,7 @@ func TestUpdateUserHandlerFailsOnEmptyJWT(t *testing.T) {
 		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name": "Jay"}`, "")
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-1234-5678-9012-000000000000", `{"Name": "Jay"}`, "")
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -404,7 +404,7 @@ func TestUpdateUserHandlerFailsOnDifferentJWT(t *testing.T) {
 	}
 
 	// Update a single user with user1JWT
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/0", `{"Name": "Lewis"}`, user1JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-1234-5678-9012-000000000000", `{"Name": "Lewis"}`, user1JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -427,7 +427,7 @@ func TestDeleteUserHandlerSucceeds(t *testing.T) {
 	}
 
 	// Delete that same user
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/0", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/00000000-1234-5678-9012-000000000000", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make DELETE request: %s", err.Error())
 	}
@@ -483,7 +483,7 @@ func TestDeleteUserHandlerFailsOnEmptyJWT(t *testing.T) {
 		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/0", "", "")
+	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/00000000-1234-5678-9012-000000000000", "", "")
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -506,7 +506,7 @@ func TestDeleteUserHandlerFailsOnDifferentJWT(t *testing.T) {
 	}
 
 	// Delete a single user with user1JWT
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/0", "", user1JWT)
+	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/00000000-1234-5678-9012-000000000000", "", user1JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
