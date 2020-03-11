@@ -116,7 +116,7 @@ func TestCreateAuthHandlerSucceeds(t *testing.T) {
 		t.Fatalf("Claims doesn't contain an ID key")
 	}
 
-	if id.(float64) != 0 {
+	if id.(string) != "0" {
 		t.Fatalf("ID is incorrect, found: %+v, wanted: 0", id)
 	}
 
@@ -272,7 +272,7 @@ func TestReadAuthHandlerSucceeds(t *testing.T) {
 		t.Fatalf("Claims doesn't contain an ID key")
 	}
 
-	if id.(float64) != 0 {
+	if id.(string) != "0" {
 		t.Fatalf("ID is incorrect, found: %+v, wanted: 0", id)
 	}
 
