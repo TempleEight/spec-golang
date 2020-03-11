@@ -31,19 +31,19 @@ type updateUserRequest struct {
 
 // createUserResponse contains a newly created user to be returned to the client
 type createUserResponse struct {
-	ID   string
+	ID   uuid.UUID
 	Name string
 }
 
 // readUserResponse contains a single user to be returned to the client
 type readUserResponse struct {
-	ID   string
+	ID   uuid.UUID
 	Name string
 }
 
 // updateUserResponse contains a newly updated user to be returned to the client
 type updateUserResponse struct {
-	ID   string
+	ID   uuid.UUID
 	Name string
 }
 
@@ -110,8 +110,15 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	uuid, err := uuid.FromString(auth.ID)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid uuid: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
 	user, err := env.dao.CreateUser(dao.CreateUserInput{
-		ID:   uuid.FromStringOrNil(auth.ID),
+		ID:   uuid,
 		Name: req.Name,
 	})
 	if err != nil {
@@ -121,7 +128,7 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(createUserResponse{
-		ID:   user.ID.String(),
+		ID:   user.ID,
 		Name: user.Name,
 	})
 }
@@ -140,8 +147,15 @@ func (env *env) readUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	uuid, err := uuid.FromString(userID)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid uuid: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
 	user, err := env.dao.ReadUser(dao.ReadUserInput{
-		ID: uuid.FromStringOrNil(userID),
+		ID: uuid,
 	})
 	if err != nil {
 		switch err.(type) {
@@ -155,7 +169,7 @@ func (env *env) readUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(readUserResponse{
-		ID:   user.ID.String(),
+		ID:   user.ID,
 		Name: user.Name,
 	})
 }
@@ -196,8 +210,15 @@ func (env *env) updateUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	uuid, err := uuid.FromString(userID)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid uuid: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
 	user, err := env.dao.UpdateUser(dao.UpdateUserInput{
-		ID:   uuid.FromStringOrNil(userID),
+		ID:   uuid,
 		Name: req.Name,
 	})
 	if err != nil {
@@ -212,7 +233,7 @@ func (env *env) updateUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(updateUserResponse{
-		ID:   user.ID.String(),
+		ID:   user.ID,
 		Name: user.Name,
 	})
 }
@@ -238,8 +259,15 @@ func (env *env) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	uuid, err := uuid.FromString(userID)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid uuid: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
 	err = env.dao.DeleteUser(dao.DeleteUserInput{
-		ID: uuid.FromStringOrNil(userID),
+		ID: uuid,
 	})
 	if err != nil {
 		switch err.(type) {

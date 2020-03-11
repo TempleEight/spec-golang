@@ -216,7 +216,7 @@ func TestReadUserHandlerFailsOnNonExistentID(t *testing.T) {
 		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/123456", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodGet, "/user/00000000-0000-0000-0000-000000000000", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -364,7 +364,7 @@ func TestUpdateUserHandlerFailsOnNonExistentID(t *testing.T) {
 		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/123456", `{"Name":"Will"}`, user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-0000-0000-0000-000000000000", `{"Name":"Will"}`, user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -466,7 +466,7 @@ func TestDeleteUserHandlerFailsOnNonExistentID(t *testing.T) {
 		&mockDAO{userList: make([]dao.User, 0)},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/123456", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/00000000-0000-0000-0000-000000000000", "", user0JWT)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
