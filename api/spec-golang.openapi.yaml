@@ -170,6 +170,7 @@ paths:
                 properties:
                   ID:
                     type: string 
+                    format: uuid
                   Name:
                     type: string
         400:
@@ -191,6 +192,7 @@ paths:
                 properties:
                   ID:
                     type: string 
+                    format: uuid
                   Name:
                     type: string
         400:
@@ -240,7 +242,8 @@ paths:
                 type: object
                 properties:
                   ID:
-                    type: string 
+                    type: string
+                    format: uuid
                   Name:
                     type: string
         400:
