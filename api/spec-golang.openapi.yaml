@@ -69,6 +69,13 @@ paths:
       tags:
         - Match
       summary: Look up a single match
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: ID of the match to get
       responses:
         200:
           description: Match details
@@ -181,6 +188,13 @@ paths:
       tags:
         - User
       summary: Look up a single user
+      parameters:
+          - in: path
+            name: id
+            schema:
+              type: integer
+            required: true
+            description: ID of the user to get
       responses:
         200:
           description: User details
