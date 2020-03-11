@@ -35,7 +35,7 @@ func (md *mockDAO) ReadUser(input dao.ReadUserInput) (*dao.User, error) {
 			}, nil
 		}
 	}
-	return nil, dao.ErrUserNotFound(input.ID)
+	return nil, dao.ErrUserNotFound(input.ID.String())
 }
 
 func (md *mockDAO) UpdateUser(input dao.UpdateUserInput) (*dao.User, error) {
@@ -48,7 +48,7 @@ func (md *mockDAO) UpdateUser(input dao.UpdateUserInput) (*dao.User, error) {
 			}, nil
 		}
 	}
-	return nil, dao.ErrUserNotFound(input.ID)
+	return nil, dao.ErrUserNotFound(input.ID.String())
 }
 
 func (md *mockDAO) DeleteUser(input dao.DeleteUserInput) error {
@@ -58,7 +58,7 @@ func (md *mockDAO) DeleteUser(input dao.DeleteUserInput) error {
 			return nil
 		}
 	}
-	return dao.ErrUserNotFound(input.ID)
+	return dao.ErrUserNotFound(input.ID.String())
 }
 
 func makeRequest(env env, method string, url string, body string, authToken string) (*httptest.ResponseRecorder, error) {
@@ -90,7 +90,7 @@ func TestCreateUserHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"ID":"0","Name":"Jay"}`
+	expected := `{"ID":"00000000-0000-0000-0000-000000000000","Name":"Jay"}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
@@ -187,7 +187,7 @@ func TestReadUserHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"ID":"0","Name":"Jay"}`
+	expected := `{"ID":"00000000-0000-0000-0000-000000000000","Name":"Jay"}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
@@ -266,7 +266,7 @@ func TestUpdateUserHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"ID":"0","Name":"Lewis"}`
+	expected := `{"ID":"00000000-0000-0000-0000-000000000000","Name":"Lewis"}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}

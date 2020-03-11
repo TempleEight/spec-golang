@@ -1,4 +1,4 @@
 CREATE TABLE user_temple (
-    id TEXT PRIMARY KEY,
+    id uuid PRIMARY KEY,
     name TEXT
 );

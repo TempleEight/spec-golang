@@ -11,6 +11,7 @@ import (
 	"github.com/TempleEight/spec-golang/user/util"
 	valid "github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
+	uuid "github.com/satori/go.uuid"
 )
 
 // env defines the environment that requests should be executed within
@@ -110,7 +111,7 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := env.dao.CreateUser(dao.CreateUserInput{
-		ID:   auth.ID,
+		ID:   uuid.FromStringOrNil(auth.ID),
 		Name: req.Name,
 	})
 	if err != nil {
@@ -120,7 +121,7 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(createUserResponse{
-		ID:   user.ID,
+		ID:   user.ID.String(),
 		Name: user.Name,
 	})
 }
@@ -140,7 +141,7 @@ func (env *env) readUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := env.dao.ReadUser(dao.ReadUserInput{
-		ID: userID,
+		ID: uuid.FromStringOrNil(userID),
 	})
 	if err != nil {
 		switch err.(type) {
@@ -154,7 +155,7 @@ func (env *env) readUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(readUserResponse{
-		ID:   user.ID,
+		ID:   user.ID.String(),
 		Name: user.Name,
 	})
 }
@@ -196,7 +197,7 @@ func (env *env) updateUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := env.dao.UpdateUser(dao.UpdateUserInput{
-		ID:   userID,
+		ID:   uuid.FromStringOrNil(userID),
 		Name: req.Name,
 	})
 	if err != nil {
@@ -211,7 +212,7 @@ func (env *env) updateUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(updateUserResponse{
-		ID:   user.ID,
+		ID:   user.ID.String(),
 		Name: user.Name,
 	})
 }
@@ -238,7 +239,7 @@ func (env *env) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = env.dao.DeleteUser(dao.DeleteUserInput{
-		ID: userID,
+		ID: uuid.FromStringOrNil(userID),
 	})
 	if err != nil {
 		switch err.(type) {
