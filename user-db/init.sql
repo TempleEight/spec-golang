@@ -1,4 +1,4 @@
 CREATE TABLE user_temple (
-    id SERIAL PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     name TEXT
 );

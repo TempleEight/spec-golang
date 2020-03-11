@@ -24,29 +24,30 @@ type DAO struct {
 
 // User encapsulates the object stored in the datastore
 type User struct {
-	ID     int64
-	Name   string
+	ID   string
+	Name string
 }
 
 // CreateUserInput encapsulates the information required to create a single user in the datastore
 type CreateUserInput struct {
-	Name   string
+	ID   string
+	Name string
 }
 
 // ReadUserInput encapsulates the information required to read a single user in the datastore
 type ReadUserInput struct {
-	ID int64
+	ID string
 }
 
 // UpdateUserInput encapsulates the information required to update a single user in the datastore
 type UpdateUserInput struct {
-	ID   int64
+	ID   string
 	Name string
 }
 
 // DeleteUserInput encapsulates the information required to delete a single user in the datastore
 type DeleteUserInput struct {
-	ID int64
+	ID string
 }
 
 // Init opens the datastore connection, returning a DAO
@@ -76,7 +77,7 @@ func executeQueryWithRowResponse(db *sql.DB, query string, args ...interface{}) 
 
 // CreateUser creates a new user in the datastore, returning the newly created user
 func (dao *DAO) CreateUser(input CreateUserInput) (*User, error) {
-	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO user_temple (name) VALUES ($1) RETURNING *", input.Name)
+	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO user_temple (id, name) VALUES ($1, $2) RETURNING *", input.ID, input.Name)
 
 	var user User
 	err := row.Scan(&user.ID, &user.Name)

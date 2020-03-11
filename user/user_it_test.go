@@ -43,7 +43,7 @@ func TestIntegrationUser(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"ID":1,"Name":"Jay"}`
+	expected := `{"ID":"1","Name":"Jay"}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
@@ -59,7 +59,7 @@ func TestIntegrationUser(t *testing.T) {
 	}
 
 	received = res.Body.String()
-	expected = `{"ID":1,"Name":"Jay"}`
+	expected = `{"ID":"1","Name":"Jay"}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
@@ -75,7 +75,7 @@ func TestIntegrationUser(t *testing.T) {
 	}
 
 	received = res.Body.String()
-	expected = `{"ID":1,"Name":"Lewis"}`
+	expected = `{"ID":"1","Name":"Lewis"}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}

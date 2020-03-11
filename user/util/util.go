@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
@@ -13,7 +12,7 @@ import (
 
 // Auth contains the unique identifier for a given auth
 type Auth struct {
-	ID int64
+	ID string
 }
 
 // GetConfig returns a configuration object from decoding the given configuration file
@@ -42,16 +41,11 @@ func CreateErrorJSON(message string) string {
 	return string(json)
 }
 
-// ExtractIDFromRequest extracts the parameter provided under parameter ID and converts it into an integer
-func ExtractIDFromRequest(requestParams map[string]string) (int64, error) {
-	idStr := requestParams["id"]
-	if len(idStr) == 0 {
-		return 0, errors.New("No ID provided")
-	}
-
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return 0, errors.New("Invalid ID provided")
+// ExtractIDFromRequest extracts the parameter provided under parameter ID and converts it into a string
+func ExtractIDFromRequest(requestParams map[string]string) (string, error) {
+	id := requestParams["id"]
+	if len(id) == 0 {
+		return "", errors.New("No ID provided")
 	}
 
 	return id, nil
@@ -84,11 +78,5 @@ func ExtractAuthIDFromRequest(headers http.Header) (*Auth, error) {
 		return nil, errors.New("JWT does not contain an id")
 	}
 
-	// Convert to an integer
-	intID, err := id.(json.Number).Int64()
-	if err != nil {
-		return nil, err
-	}
-
-	return &Auth{intID}, nil
+	return &Auth{id.(string)}, nil
 }
