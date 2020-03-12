@@ -5,6 +5,8 @@ services:
     build: 
       context: .
       dockerfile: test.Dockerfile
+    depends_on:
+      - user-db
     networks: 
       - user-network 
 
