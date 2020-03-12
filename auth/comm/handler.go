@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/TempleEight/spec-golang/auth/utils"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+
+	"github.com/TempleEight/spec-golang/auth/util"
 )
 
 // Comm provides the interface adopted by Handler, allowing for mocking
@@ -33,7 +34,7 @@ type JWTCredential struct {
 }
 
 // Init sets up the Handler object with a list of services from the config
-func Init(config *utils.Config) *Handler {
+func Init(config *util.Config) *Handler {
 	return &Handler{config.Services}
 }
 

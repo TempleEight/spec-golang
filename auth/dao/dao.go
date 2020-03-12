@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/TempleEight/spec-golang/auth/utils"
+	"github.com/TempleEight/spec-golang/auth/util"
 	"github.com/google/uuid"
 
 	// pq acts as the driver for SQL requests
@@ -45,7 +45,7 @@ type ReadAuthInput struct {
 }
 
 // Init opens the datastore connection, returning a DAO
-func Init(config *utils.Config) (*DAO, error) {
+func Init(config *util.Config) (*DAO, error) {
 	connStr := fmt.Sprintf("user=%s dbname=%s host=%s sslmode=%s", config.User, config.DBName, config.Host, config.SSLMode)
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
