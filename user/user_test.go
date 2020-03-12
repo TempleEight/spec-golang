@@ -64,10 +64,10 @@ func (md *mockDAO) DeleteUser(input dao.DeleteUserInput) error {
 func makeRequest(env env, method string, url string, body string, authToken string) (*httptest.ResponseRecorder, error) {
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest(method, url, strings.NewReader(body))
-	req.Header.Set("Authorization", "Bearer "+authToken)
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Set("Authorization", "Bearer "+authToken)
 
 	env.router().ServeHTTP(rec, req)
 	return rec, nil
