@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/TempleEight/spec-golang/auth/util"
+	"github.com/google/uuid"
+
 	// pq acts as the driver for SQL requests
 	"github.com/lib/pq"
 )
@@ -25,13 +27,14 @@ type DAO struct {
 
 // Auth encapsulates the object stored in the datastore
 type Auth struct {
-	ID       int
+	ID       uuid.UUID
 	Email    string
 	Password string
 }
 
 // CreateAuthInput encapsulates the information required to create a single auth in the datastore
 type CreateAuthInput struct {
+	ID       uuid.UUID
 	Email    string
 	Password string
 }
@@ -69,7 +72,7 @@ func executeQueryWithRowResponse(db *sql.DB, query string, args ...interface{}) 
 
 // CreateAuth creates a new auth in the datastore, returning the newly created auth
 func (dao *DAO) CreateAuth(input CreateAuthInput) (*Auth, error) {
-	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO auth (email, password) VALUES ($1, $2) RETURNING *", input.Email, input.Password)
+	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO auth (id, email, password) VALUES ($1, $2, $3) RETURNING *", input.ID, input.Email, input.Password)
 
 	var auth Auth
 	err := row.Scan(&auth.ID, &auth.Email, &auth.Password)

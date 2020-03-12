@@ -13,6 +13,7 @@ import (
 	"github.com/TempleEight/spec-golang/auth/dao"
 	"github.com/TempleEight/spec-golang/auth/util"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
 )
 
 var environment env
@@ -77,8 +78,9 @@ func TestIntegrationAuth(t *testing.T) {
 		t.Fatalf("Claims doesn't contain an ID key")
 	}
 
-	if id.(string) != "1" {
-		t.Fatalf("ID is incorrect, found: %+v, wanted: 0", id)
+	_, err = uuid.Parse(id.(string))
+	if err != nil {
+		t.Fatalf("ID is not a valid UUID")
 	}
 
 	iss, ok := claims["iss"]
@@ -126,8 +128,9 @@ func TestIntegrationAuth(t *testing.T) {
 		t.Fatalf("Claims doesn't contain an ID key")
 	}
 
-	if id.(string) != "1" {
-		t.Fatalf("ID is incorrect, found: %+v, wanted: 0", id)
+	_, err = uuid.Parse(id.(string))
+	if err != nil {
+		t.Fatalf("ID is not a valid UUID")
 	}
 
 	iss, ok = claims["iss"]
