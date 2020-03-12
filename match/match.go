@@ -11,6 +11,7 @@ import (
 	"github.com/TempleEight/spec-golang/match/dao"
 	"github.com/TempleEight/spec-golang/match/util"
 	valid "github.com/asaskevich/govalidator"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -22,14 +23,14 @@ type env struct {
 
 // createMatchRequest contains the client-provided information required to create a single match
 type createMatchRequest struct {
-	UserOne *int64 `valid:"-"`
-	UserTwo *int64 `valid:"-"`
+	UserOne *uuid.UUID `valid:"-"`
+	UserTwo *uuid.UUID `valid:"-"`
 }
 
 // updateMatchRequest contains the client-provided information required to update a single match, excluding ID
 type updateMatchRequest struct {
-	UserOne *int64 `valid:"-"`
-	UserTwo *int64 `valid:"-"`
+	UserOne *uuid.UUID `valid:"-"`
+	UserTwo *uuid.UUID `valid:"-"`
 }
 
 // listMatchResponse contains a single match list to be returned to the client
@@ -39,25 +40,25 @@ type listMatchResponse struct {
 
 // createMatchResponse contains a newly created match to be returned to the client
 type createMatchResponse struct {
-	ID        int64
-	UserOne   int64
-	UserTwo   int64
+	ID        uuid.UUID
+	UserOne   uuid.UUID
+	UserTwo   uuid.UUID
 	MatchedOn string
 }
 
 // readMatchResponse contains a single match to be returned to the client
 type readMatchResponse struct {
-	ID        int64
-	UserOne   int64
-	UserTwo   int64
+	ID        uuid.UUID
+	UserOne   uuid.UUID
+	UserTwo   uuid.UUID
 	MatchedOn string
 }
 
 // updateMatchResponse contains a newly updated match to be returned to the client
 type updateMatchResponse struct {
-	ID        int64
-	UserOne   int64
-	UserTwo   int64
+	ID        uuid.UUID
+	UserOne   uuid.UUID
+	UserTwo   uuid.UUID
 	MatchedOn string
 }
 
@@ -105,7 +106,7 @@ func jsonMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func checkAuthorization(env *env, auth *util.Auth, matchID int64) (bool, error) {
+func checkAuthorization(env *env, auth *util.Auth, matchID uuid.UUID) (bool, error) {
 	match, err := env.dao.ReadMatch(dao.ReadMatchInput{
 		ID: matchID,
 	})
@@ -203,7 +204,15 @@ func (env *env) createMatchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	uuid, err := uuid.NewUUID()
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not create UUID: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+
 	match, err := env.dao.CreateMatch(dao.CreateMatchInput{
+		ID:      uuid,
 		AuthID:  auth.ID,
 		UserOne: *req.UserOne,
 		UserTwo: *req.UserTwo,

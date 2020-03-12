@@ -1,24 +1,40 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/TempleEight/spec-golang/match/dao"
+	"github.com/google/uuid"
 )
 
-// Define 2 JWTs with ID 0 and 1
-const auth0JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjowLCJpc3MiOiJmRlM4S21WWXVLQUN5RjN3ZHBQS0hTUXFtWlZWd2pEcSJ9.KzUa-OpHEjFQlsSy7YZI1Kppu4eIU5nyivLvivWcpRc"
-const auth1JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjoxLCJpc3MiOiJmRlM4S21WWXVLQUN5RjN3ZHBQS0hTUXFtWlZWd2pEcSJ9.kXaTT0Yl3-zeWreKOl5Zd6dG1gJG49JSS0zfdBRG_oU"
+// Define 2 UUIDs
+const UUID0 = "00000000-1234-5678-9012-000000000000"
+const UUID1 = "00000000-1234-5678-9012-000000000001"
+
+// Define 2 JWTs corresponding to UUIDs
+const JWT0 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjoiMDAwMDAwMDAtMTIzNC01Njc4LTkwMTItMDAwMDAwMDAwMDAwIiwiaXNzIjoiZkZTOEttVll1S0FDeUYzd2RwUEtIU1FxbVpWVndqRHEifQ.jMpelsEJUwONtRCQnQCo2v5Ph7cZHloc5R1OvKkU2Ck"
+const JWT1 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjoiMDAwMDAwMDAtMTIzNC01Njc4LTkwMTItMDAwMDAwMDAwMDAxIiwiaXNzIjoiZkZTOEttVll1S0FDeUYzd2RwUEtIU1FxbVpWVndqRHEifQ.lMmkaK9L2kD2ZnbblSlXdz93cz6jZCALR0KoGlzQKpc"
+
+// Define 3 Match UUIDs
+const matchUUID0 = "00000001-1234-5678-9012-000000000000"
+const matchUUID1 = "00000001-1234-5678-9012-000000000001"
+const matchUUID2 = "00000001-1234-5678-9012-000000000002"
+
+// Define 3 User UUIDs
+const userUUID0 = "00000002-1234-5678-9012-000000000000"
+const userUUID1 = "00000002-1234-5678-9012-000000000001"
+const userUUID2 = "00000002-1234-5678-9012-000000000002"
 
 type mockDAO struct {
 	matchList []dao.Match
 }
 
 type mockComm struct {
-	userIDs []int64
+	userIDs []uuid.UUID
 }
 
 func (md *mockDAO) ListMatch(input dao.ListMatchInput) (*[]dao.Match, error) {
@@ -34,7 +50,7 @@ func (md *mockDAO) ListMatch(input dao.ListMatchInput) (*[]dao.Match, error) {
 
 func (md *mockDAO) CreateMatch(input dao.CreateMatchInput) (*dao.Match, error) {
 	mockMatch := dao.Match{
-		ID:        int64(len(md.matchList)),
+		ID:        uuid.MustParse(matchUUID0),
 		AuthID:    input.AuthID,
 		UserOne:   input.UserOne,
 		UserTwo:   input.UserTwo,
@@ -53,16 +69,10 @@ func (md *mockDAO) CreateMatch(input dao.CreateMatchInput) (*dao.Match, error) {
 func (md *mockDAO) ReadMatch(input dao.ReadMatchInput) (*dao.Match, error) {
 	for _, match := range md.matchList {
 		if match.ID == input.ID {
-			return &dao.Match{
-				ID:        match.ID,
-				AuthID:    match.AuthID,
-				UserOne:   match.UserOne,
-				UserTwo:   match.UserTwo,
-				MatchedOn: match.MatchedOn,
-			}, nil
+			return &match, nil
 		}
 	}
-	return nil, dao.ErrMatchNotFound(input.ID)
+	return nil, dao.ErrMatchNotFound(input.ID.String())
 }
 
 func (md *mockDAO) UpdateMatch(input dao.UpdateMatchInput) (*dao.Match, error) {
@@ -80,7 +90,7 @@ func (md *mockDAO) UpdateMatch(input dao.UpdateMatchInput) (*dao.Match, error) {
 			}, nil
 		}
 	}
-	return nil, dao.ErrMatchNotFound(input.ID)
+	return nil, dao.ErrMatchNotFound(input.ID.String())
 }
 
 func (md *mockDAO) DeleteMatch(input dao.DeleteMatchInput) error {
@@ -90,10 +100,10 @@ func (md *mockDAO) DeleteMatch(input dao.DeleteMatchInput) error {
 			return nil
 		}
 	}
-	return dao.ErrMatchNotFound(input.ID)
+	return dao.ErrMatchNotFound(input.ID.String())
 }
 
-func (mc *mockComm) CheckUser(userID int64) (bool, error) {
+func (mc *mockComm) CheckUser(userID uuid.UUID) (bool, error) {
 	for _, id := range mc.userIDs {
 		if id == userID {
 			return true, nil
@@ -118,35 +128,39 @@ func TestListMatchHandlerSucceeds(t *testing.T) {
 	// Populate mock datastore
 	matchList := []dao.Match{
 		dao.Match{
-			ID:        0,
-			AuthID:    0,
-			UserOne:   0,
-			UserTwo:   1,
+			ID:        uuid.MustParse(matchUUID0),
+			AuthID:    uuid.MustParse(UUID0),
+			UserOne:   uuid.MustParse(userUUID0),
+			UserTwo:   uuid.MustParse(userUUID1),
 			MatchedOn: "2020-01-01T12:00:00.000000Z",
 		},
 		dao.Match{
-			ID:        1,
-			AuthID:    0,
-			UserOne:   0,
-			UserTwo:   2,
+			ID:        uuid.MustParse(matchUUID1),
+			AuthID:    uuid.MustParse(UUID0),
+			UserOne:   uuid.MustParse(userUUID0),
+			UserTwo:   uuid.MustParse(userUUID2),
 			MatchedOn: "2020-01-01T12:00:00.000000Z",
 		},
 		dao.Match{
-			ID:        2,
-			AuthID:    1,
-			UserOne:   1,
-			UserTwo:   2,
+			ID:        uuid.MustParse(matchUUID2),
+			AuthID:    uuid.MustParse(UUID1),
+			UserOne:   uuid.MustParse(userUUID1),
+			UserTwo:   uuid.MustParse(userUUID2),
 			MatchedOn: "2020-01-01T12:00:00.000000Z",
 		},
 	}
 
 	mockEnv := env{
 		&mockDAO{matchList},
-		&mockComm{userIDs: []int64{0, 1, 2}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+			uuid.MustParse(userUUID2),
+		}},
 	}
 
-	// Read the match list for AuthID 0
-	res, err := makeRequest(mockEnv, http.MethodGet, "/match/all", "", auth0JWT)
+	// Read the match list for UUID0
+	res, err := makeRequest(mockEnv, http.MethodGet, "/match/all", "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -156,7 +170,8 @@ func TestListMatchHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"MatchList":[{"ID":0,"UserOne":0,"UserTwo":1,"MatchedOn":"2020-01-01T12:00:00.000000Z"},{"ID":1,"UserOne":0,"UserTwo":2,"MatchedOn":"2020-01-01T12:00:00.000000Z"}]}`
+	expected := fmt.Sprintf(`{"MatchList":[{"ID":"%s","UserOne":"%s","UserTwo":"%s","MatchedOn":"2020-01-01T12:00:00.000000Z"},{"ID":"%s","UserOne":"%s","UserTwo":"%s","MatchedOn":"2020-01-01T12:00:00.000000Z"}]}`,
+		matchUUID0, userUUID0, userUUID1, matchUUID1, userUUID0, userUUID2)
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: received %+v, expected %+v", received, expected)
 	}
@@ -166,10 +181,14 @@ func TestListMatchHandlerSucceeds(t *testing.T) {
 func TestCreateMatchHandlerSucceeds(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 0, "UserTwo": 1}`, auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, userUUID0,
+		userUUID1), JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -179,7 +198,8 @@ func TestCreateMatchHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"ID":0,"UserOne":0,"UserTwo":1,"MatchedOn":"2020-01-01T12:00:00.000000Z"}`
+	expected := fmt.Sprintf(`{"ID":"%s","UserOne":"%s","UserTwo":"%s","MatchedOn":"2020-01-01T12:00:00.000000Z"}`, matchUUID0,
+		userUUID0, userUUID1)
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: received %+v, expected %+v", received, expected)
 	}
@@ -189,10 +209,13 @@ func TestCreateMatchHandlerSucceeds(t *testing.T) {
 func TestCreateMatchHandlerFailsOnIncompleteBody(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 0}`, auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s"}`, userUUID0), JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -206,10 +229,13 @@ func TestCreateMatchHandlerFailsOnIncompleteBody(t *testing.T) {
 func TestCreateMatchHandlerFailsOnMalformedJSONBody(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne"`, auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne"`, JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -223,11 +249,14 @@ func TestCreateMatchHandlerFailsOnMalformedJSONBody(t *testing.T) {
 func TestCreateMatchHandlerFailsOnNoBody(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
 	// Create a single match
-	res, err := makeRequest(mockEnv, http.MethodPost, "/match", "", auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/match", "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -241,10 +270,14 @@ func TestCreateMatchHandlerFailsOnNoBody(t *testing.T) {
 func TestCreateMatchHandlerFailsOnInvalidUserOne(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 123456, "UserTwo": 0}`, auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`,
+		uuid.Nil.String(), userUUID0), JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -258,10 +291,14 @@ func TestCreateMatchHandlerFailsOnInvalidUserOne(t *testing.T) {
 func TestCreateMatchHandlerFailsOnInvalidUserTwo(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 0, "UserTwo": 123456}`, auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`,
+		userUUID0, uuid.Nil.String()), JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -275,10 +312,13 @@ func TestCreateMatchHandlerFailsOnInvalidUserTwo(t *testing.T) {
 func TestCreateMatchHandlerFailsOnAllInvalidReferences(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 123456, "UserTwo": 234567}`, auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, uuid.Nil.String(), uuid.Nil.String()), JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -292,19 +332,22 @@ func TestCreateMatchHandlerFailsOnAllInvalidReferences(t *testing.T) {
 func TestReadMatchHandlerSucceeds(t *testing.T) {
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
-		ID:        0,
-		AuthID:    0,
-		UserOne:   0,
-		UserTwo:   1,
+		ID:        uuid.MustParse(matchUUID0),
+		AuthID:    uuid.MustParse(UUID0),
+		UserOne:   uuid.MustParse(userUUID0),
+		UserTwo:   uuid.MustParse(userUUID1),
 		MatchedOn: "2020-01-01T12:00:00.000000Z",
 	}}
 
 	mockEnv := env{
 		&mockDAO{matchList},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodGet, "/match/0", "", auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/match/%s", matchUUID0), "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -314,7 +357,8 @@ func TestReadMatchHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"ID":0,"UserOne":0,"UserTwo":1,"MatchedOn":"2020-01-01T12:00:00.000000Z"}`
+	expected := fmt.Sprintf(`{"ID":"%s","UserOne":"%s","UserTwo":"%s","MatchedOn":"2020-01-01T12:00:00.000000Z"}`, matchUUID0,
+		userUUID0, userUUID1)
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: received %+v, expected %+v", received, expected)
 	}
@@ -324,10 +368,13 @@ func TestReadMatchHandlerSucceeds(t *testing.T) {
 func TestReadMatchHandlerFailsOnEmptyID(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodGet, "/match/", "", auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodGet, "/match/", "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -342,10 +389,13 @@ func TestReadMatchHandlerFailsOnEmptyID(t *testing.T) {
 func TestReadMatchHandlerFailsOnNonExistentID(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodGet, "/match/123456", "", auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/match/%s", uuid.Nil.String()), "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -356,41 +406,28 @@ func TestReadMatchHandlerFailsOnNonExistentID(t *testing.T) {
 	}
 }
 
-// Test that providing a string ID to the read endpoint fails
-func TestReadUserHandlerFailsOnStringID(t *testing.T) {
-	mockEnv := env{
-		&mockDAO{matchList: make([]dao.Match, 0)},
-		&mockComm{userIDs: []int64{0, 1}},
-	}
-
-	res, err := makeRequest(mockEnv, http.MethodGet, "/match/abcdef", "", auth0JWT)
-	if err != nil {
-		t.Fatalf("Could not make request: %s", err.Error())
-	}
-
-	// Bad Request, since an integer ID is required
-	if res.Code != http.StatusBadRequest {
-		t.Errorf("Wrong status code: %v", res.Code)
-	}
-}
-
 // Test that a single match can be updated successfully
 func TestUpdateUserHandlerSucceeds(t *testing.T) {
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
-		ID:        0,
-		AuthID:    0,
-		UserOne:   0,
-		UserTwo:   1,
+		ID:        uuid.MustParse(matchUUID0),
+		AuthID:    uuid.MustParse(UUID0),
+		UserOne:   uuid.MustParse(userUUID0),
+		UserTwo:   uuid.MustParse(userUUID1),
 		MatchedOn: "2020-01-01T12:00:00.000000Z",
 	}}
 
 	mockEnv := env{
 		&mockDAO{matchList},
-		&mockComm{userIDs: []int64{0, 1, 2}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+			uuid.MustParse(userUUID2),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/match/0", `{"UserOne": 0, "UserTwo": 2}`, auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/match/%s", matchUUID0),
+		fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, userUUID0, userUUID2), JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -400,7 +437,8 @@ func TestUpdateUserHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"ID":0,"UserOne":0,"UserTwo":2,"MatchedOn":"2020-12-31T12:00:00.000000Z"}`
+	expected := fmt.Sprintf(`{"ID":"%s","UserOne":"%s","UserTwo":"%s","MatchedOn":"2020-12-31T12:00:00.000000Z"}`,
+		matchUUID0, userUUID0, userUUID2)
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: received %+v, expected %+v", received, expected)
 	}
@@ -410,10 +448,13 @@ func TestUpdateUserHandlerSucceeds(t *testing.T) {
 func TestUpdateMatchHandlerFailsOnIncompleteBody(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 0}`, auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s"}`, userUUID0), JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -427,19 +468,22 @@ func TestUpdateMatchHandlerFailsOnIncompleteBody(t *testing.T) {
 func TestUpdateMatchHandlerFailsOnMalformedJSONBody(t *testing.T) {
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
-		ID:        0,
-		AuthID:    0,
-		UserOne:   0,
-		UserTwo:   1,
+		ID:        uuid.MustParse(matchUUID0),
+		AuthID:    uuid.MustParse(UUID0),
+		UserOne:   uuid.MustParse(userUUID0),
+		UserTwo:   uuid.MustParse(userUUID1),
 		MatchedOn: "2020-01-01T12:00:00.000000Z",
 	}}
 
 	mockEnv := env{
 		&mockDAO{matchList},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/match/0", `{"UserOne"`, auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/match/%s", matchUUID0), `{"UserOne"`, JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -453,19 +497,22 @@ func TestUpdateMatchHandlerFailsOnMalformedJSONBody(t *testing.T) {
 func TestUpdateMatchHandlerFailsOnNoBody(t *testing.T) {
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
-		ID:        0,
-		AuthID:    0,
-		UserOne:   0,
-		UserTwo:   1,
+		ID:        uuid.MustParse(matchUUID0),
+		AuthID:    uuid.MustParse(UUID0),
+		UserOne:   uuid.MustParse(userUUID0),
+		UserTwo:   uuid.MustParse(userUUID1),
 		MatchedOn: "2020-01-01T12:00:00.000000Z",
 	}}
 
 	mockEnv := env{
 		&mockDAO{matchList},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/match/0", "", auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/match/%s", matchUUID0), "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -479,10 +526,13 @@ func TestUpdateMatchHandlerFailsOnNoBody(t *testing.T) {
 func TestUpdateMatchHandlerFailsOnEmptyID(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/match/", "", auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/match/", "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -497,10 +547,14 @@ func TestUpdateMatchHandlerFailsOnEmptyID(t *testing.T) {
 func TestUpdateMatchHandlerFailsOnNonExistentID(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/match/123456", `{"UserOne": 0, "UserTwo": 1}`, auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/match/%s", uuid.Nil.String()),
+		fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, userUUID0, userUUID1), JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -511,41 +565,27 @@ func TestUpdateMatchHandlerFailsOnNonExistentID(t *testing.T) {
 	}
 }
 
-// Test that providing a string ID to the update endpoint fails
-func TestUpdateMatchHandlerFailsOnStringID(t *testing.T) {
-	mockEnv := env{
-		&mockDAO{matchList: make([]dao.Match, 0)},
-		&mockComm{userIDs: []int64{0, 1}},
-	}
-
-	res, err := makeRequest(mockEnv, http.MethodGet, "/match/abcdef", "", auth0JWT)
-	if err != nil {
-		t.Fatalf("Could not make request: %s", err.Error())
-	}
-
-	// Bad Request, since an integer ID is required
-	if res.Code != http.StatusBadRequest {
-		t.Errorf("Wrong status code: %v", res.Code)
-	}
-}
-
 // Test that providing an invalid UserOne reference to the update endpoint fails
 func TestUpdateMatchHandlerFailsOnInvalidUserOne(t *testing.T) {
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
-		ID:        0,
-		AuthID:    0,
-		UserOne:   0,
-		UserTwo:   1,
+		ID:        uuid.MustParse(matchUUID0),
+		AuthID:    uuid.MustParse(UUID0),
+		UserOne:   uuid.MustParse(userUUID0),
+		UserTwo:   uuid.MustParse(userUUID1),
 		MatchedOn: "2020-01-01T12:00:00.000000Z",
 	}}
 
 	mockEnv := env{
 		&mockDAO{matchList},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/match/0", `{"UserOne": 123456, "UserTwo": 0}`, auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/match/%s", matchUUID0),
+		fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, uuid.Nil.String(), userUUID0), JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -559,19 +599,24 @@ func TestUpdateMatchHandlerFailsOnInvalidUserOne(t *testing.T) {
 func TestUpdateMatchHandlerFailsOnInvalidUserTwo(t *testing.T) {
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
-		ID:        0,
-		AuthID:    0,
-		UserOne:   0,
-		UserTwo:   1,
+		ID:        uuid.MustParse(matchUUID0),
+		AuthID:    uuid.MustParse(UUID0),
+		UserOne:   uuid.MustParse(userUUID0),
+		UserTwo:   uuid.MustParse(userUUID1),
 		MatchedOn: "2020-01-01T12:00:00.000000Z",
 	}}
 
 	mockEnv := env{
 		&mockDAO{matchList},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/match/0", `{"UserOne": 0, "UserTwo": 123456}`, auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/match/%s", matchUUID0),
+		fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, userUUID0,
+			uuid.Nil.String()), JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -585,19 +630,24 @@ func TestUpdateMatchHandlerFailsOnInvalidUserTwo(t *testing.T) {
 func TestUpdateMatchHandlerFailsOnAllInvalidReferences(t *testing.T) {
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
-		ID:        0,
-		AuthID:    0,
-		UserOne:   0,
-		UserTwo:   1,
+		ID:        uuid.MustParse(matchUUID0),
+		AuthID:    uuid.MustParse(UUID0),
+		UserOne:   uuid.MustParse(userUUID0),
+		UserTwo:   uuid.MustParse(userUUID1),
 		MatchedOn: "2020-01-01T12:00:00.000000Z",
 	}}
 
 	mockEnv := env{
 		&mockDAO{matchList},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/match/0", `{"UserOne": 123456, "UserTwo": 234567}`, auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/match/%s", matchUUID0),
+		fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, uuid.Nil.String(),
+			uuid.Nil.String()), JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -611,19 +661,22 @@ func TestUpdateMatchHandlerFailsOnAllInvalidReferences(t *testing.T) {
 func TestDeleteMatchHandlerSucceeds(t *testing.T) {
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
-		ID:        0,
-		AuthID:    0,
-		UserOne:   0,
-		UserTwo:   1,
+		ID:        uuid.MustParse(matchUUID0),
+		AuthID:    uuid.MustParse(UUID0),
+		UserOne:   uuid.MustParse(userUUID0),
+		UserTwo:   uuid.MustParse(userUUID1),
 		MatchedOn: "2020-01-01T12:00:00.000000Z",
 	}}
 
 	mockEnv := env{
 		&mockDAO{matchList},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/match/0", "", auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodDelete, fmt.Sprintf("/match/%s", matchUUID0), "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -643,10 +696,13 @@ func TestDeleteMatchHandlerSucceeds(t *testing.T) {
 func TestDeleteMatchHandlerFailsOnEmptyID(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/match/", "", auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodDelete, "/match/", "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -661,34 +717,19 @@ func TestDeleteMatchHandlerFailsOnEmptyID(t *testing.T) {
 func TestDeleteMatchHandlerFailsOnNonExistentID(t *testing.T) {
 	mockEnv := env{
 		&mockDAO{matchList: make([]dao.Match, 0)},
-		&mockComm{userIDs: []int64{0, 1}},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
 	}
 
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/match/123456", "", auth0JWT)
+	res, err := makeRequest(mockEnv, http.MethodDelete, fmt.Sprintf("/match/%s", uuid.Nil.String()), "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
 	// Unauthorized, since no match exists with the given ID
 	if res.Code != http.StatusUnauthorized {
-		t.Errorf("Wrong status code: %v", res.Code)
-	}
-}
-
-// Test that providing a string ID to the delete endpoint fails
-func TestDeleteMatchHandlerFailsOnStringID(t *testing.T) {
-	mockEnv := env{
-		&mockDAO{matchList: make([]dao.Match, 0)},
-		&mockComm{userIDs: []int64{0, 1}},
-	}
-
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/match/abcdef", "", auth0JWT)
-	if err != nil {
-		t.Fatalf("Could not make request: %s", err.Error())
-	}
-
-	// Bad Request, since an integer ID is required
-	if res.Code != http.StatusBadRequest {
 		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }
