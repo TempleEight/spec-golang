@@ -43,13 +43,13 @@ func TestIntegrationUser(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"ID":1,"Name":"Jay"}`
+	expected := `{"ID":"00000000-1234-5678-9012-000000000001","Name":"Jay"}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
 
 	// Read that same user
-	res, err = makeRequest(environment, http.MethodGet, "/user/1", "", user1JWT)
+	res, err = makeRequest(environment, http.MethodGet, "/user/00000000-1234-5678-9012-000000000001", "", user1JWT)
 	if err != nil {
 		t.Fatalf("Could not make GET request: %s", err.Error())
 	}
@@ -59,29 +59,13 @@ func TestIntegrationUser(t *testing.T) {
 	}
 
 	received = res.Body.String()
-	expected = `{"ID":1,"Name":"Jay"}`
-	if expected != strings.TrimSuffix(received, "\n") {
-		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
-	}
-
-	// Read the auth for that same user
-	res, err = makeRequest(environment, http.MethodGet, "/user/1/auth", "", user1JWT)
-	if err != nil {
-		t.Fatalf("Could not make GET request: %s", err.Error())
-	}
-
-	if res.Code != http.StatusOK {
-		t.Errorf("Wrong status code: %v", res.Code)
-	}
-
-	received = res.Body.String()
-	expected = `{"AuthID":1}`
+	expected = `{"ID":"00000000-1234-5678-9012-000000000001","Name":"Jay"}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
 
 	// Update that same user
-	res, err = makeRequest(environment, http.MethodPut, "/user/1", `{"Name": "Lewis"}`, user1JWT)
+	res, err = makeRequest(environment, http.MethodPut, "/user/00000000-1234-5678-9012-000000000001", `{"Name": "Lewis"}`, user1JWT)
 	if err != nil {
 		t.Fatalf("Could not make PUT request: %s", err.Error())
 	}
@@ -91,13 +75,13 @@ func TestIntegrationUser(t *testing.T) {
 	}
 
 	received = res.Body.String()
-	expected = `{"ID":1,"Name":"Lewis"}`
+	expected = `{"ID":"00000000-1234-5678-9012-000000000001","Name":"Lewis"}`
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
 
 	// Delete that same user
-	res, err = makeRequest(environment, http.MethodDelete, "/user/1", "", user1JWT)
+	res, err = makeRequest(environment, http.MethodDelete, "/user/00000000-1234-5678-9012-000000000001", "", user1JWT)
 	if err != nil {
 		t.Fatalf("Could not make DELETE request: %s", err.Error())
 	}

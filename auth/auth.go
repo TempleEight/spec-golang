@@ -12,9 +12,10 @@ import (
 
 	"github.com/TempleEight/spec-golang/auth/comm"
 	"github.com/TempleEight/spec-golang/auth/dao"
-	"github.com/TempleEight/spec-golang/auth/utils"
+	"github.com/TempleEight/spec-golang/auth/util"
 	valid "github.com/asaskevich/govalidator"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -63,7 +64,7 @@ func main() {
 	// Require all struct fields by default
 	valid.SetFieldsRequiredByDefault(true)
 
-	config, err := utils.GetConfig(*configPtr)
+	config, err := util.GetConfig(*configPtr)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -96,14 +97,14 @@ func (env *env) createAuthHandler(w http.ResponseWriter, r *http.Request) {
 	var req createAuthRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	_, err = valid.ValidateStruct(req)
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
@@ -111,21 +112,29 @@ func (env *env) createAuthHandler(w http.ResponseWriter, r *http.Request) {
 	// Hash and salt the password before storing
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Could not hash password: %s", err.Error()))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not hash password: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+
+	uuid, err := uuid.NewUUID()
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not create UUID: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
 	auth, err := env.dao.CreateAuth(dao.CreateAuthInput{
+		ID:       uuid,
 		Email:    req.Email,
 		Password: string(hashedPassword),
 	})
 	if err != nil {
 		switch err {
 		case dao.ErrDuplicateAuth:
-			http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusForbidden)
+			http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusForbidden)
 		default:
-			errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 			http.Error(w, errMsg, http.StatusInternalServerError)
 		}
 		return
@@ -133,7 +142,7 @@ func (env *env) createAuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	accessToken, err := createToken(auth.ID, env.jwtCredential.Key, env.jwtCredential.Secret)
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Could not create access token: %s", err.Error()))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not create access token: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
@@ -147,14 +156,14 @@ func (env *env) readAuthHandler(w http.ResponseWriter, r *http.Request) {
 	var req readAuthRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	_, err = valid.ValidateStruct(req)
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
@@ -165,10 +174,10 @@ func (env *env) readAuthHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err {
 		case dao.ErrAuthNotFound:
-			errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid email or password"))
+			errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid email or password"))
 			http.Error(w, errMsg, http.StatusUnauthorized)
 		default:
-			errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 			http.Error(w, errMsg, http.StatusInternalServerError)
 		}
 		return
@@ -176,14 +185,14 @@ func (env *env) readAuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = bcrypt.CompareHashAndPassword([]byte(auth.Password), []byte(req.Password))
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid email or password"))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid email or password"))
 		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
 	}
 
 	accessToken, err := createToken(auth.ID, env.jwtCredential.Key, env.jwtCredential.Secret)
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Could not create access token: %s", err.Error()))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not create access token: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
@@ -194,9 +203,9 @@ func (env *env) readAuthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Create an access token with a 24 hour lifetime
-func createToken(id int, issuer string, secret string) (string, error) {
+func createToken(id uuid.UUID, issuer string, secret string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":  id,
+		"id":  id.String(),
 		"iss": issuer,
 		"exp": time.Now().Add(24 * time.Hour).Unix(),
 	})

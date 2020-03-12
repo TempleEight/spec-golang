@@ -5,15 +5,15 @@ import (
 	"errors"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
 )
 
 // Auth contains the unique identifier for a given auth
 type Auth struct {
-	ID int64
+	ID uuid.UUID
 }
 
 // GetConfig returns a configuration object from decoding the given configuration file
@@ -42,19 +42,14 @@ func CreateErrorJSON(message string) string {
 	return string(json)
 }
 
-// ExtractIDFromRequest extracts the parameter provided under parameter ID and converts it into an integer
-func ExtractIDFromRequest(requestParams map[string]string) (int64, error) {
-	idStr := requestParams["id"]
-	if len(idStr) == 0 {
-		return 0, errors.New("No ID provided")
+// ExtractIDFromRequest extracts the parameter provided under parameter ID and converts it into a string
+func ExtractIDFromRequest(requestParams map[string]string) (uuid.UUID, error) {
+	id := requestParams["id"]
+	if len(id) == 0 {
+		return uuid.Nil, errors.New("No ID provided")
 	}
 
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return 0, errors.New("Invalid ID provided")
-	}
-
-	return id, nil
+	return uuid.Parse(id)
 }
 
 // ExtractAuthIDFromRequest extracts a token from a header of the form `Authorization: Bearer <token>`
@@ -84,11 +79,10 @@ func ExtractAuthIDFromRequest(headers http.Header) (*Auth, error) {
 		return nil, errors.New("JWT does not contain an id")
 	}
 
-	// Convert to an integer
-	intID, err := id.(json.Number).Int64()
+	uuid, err := uuid.Parse(id.(string))
 	if err != nil {
 		return nil, err
 	}
 
-	return &Auth{intID}, nil
+	return &Auth{uuid}, nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/TempleEight/spec-golang/user/dao"
 	"github.com/TempleEight/spec-golang/user/util"
 	valid "github.com/asaskevich/govalidator"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -30,25 +31,20 @@ type updateUserRequest struct {
 
 // createUserResponse contains a newly created user to be returned to the client
 type createUserResponse struct {
-	ID   int64
+	ID   uuid.UUID
 	Name string
 }
 
 // readUserResponse contains a single user to be returned to the client
 type readUserResponse struct {
-	ID   int64
+	ID   uuid.UUID
 	Name string
 }
 
 // updateUserResponse contains a newly updated user to be returned to the client
 type updateUserResponse struct {
-	ID   int64
+	ID   uuid.UUID
 	Name string
-}
-
-// readUserAuthResponse contains a single user to be returned to the client, with auth ID
-type readUserAuthResponse struct {
-	AuthID int64
 }
 
 // router generates a router for this service
@@ -58,7 +54,6 @@ func (env *env) router() *mux.Router {
 	r.HandleFunc("/user/{id}", env.readUserHandler).Methods(http.MethodGet)
 	r.HandleFunc("/user/{id}", env.updateUserHandler).Methods(http.MethodPut)
 	r.HandleFunc("/user/{id}", env.deleteUserHandler).Methods(http.MethodDelete)
-	r.HandleFunc("/user/{id}/auth", env.readUserAuthHandler).Methods(http.MethodGet)
 	r.Use(jsonMiddleware)
 	return r
 }
@@ -116,8 +111,8 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := env.dao.CreateUser(dao.CreateUserInput{
-		AuthID: auth.ID,
-		Name:   req.Name,
+		ID:   auth.ID,
+		Name: req.Name,
 	})
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
@@ -258,37 +253,4 @@ func (env *env) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(struct{}{})
-}
-
-func (env *env) readUserAuthHandler(w http.ResponseWriter, r *http.Request) {
-	_, err := util.ExtractAuthIDFromRequest(r.Header)
-	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusUnauthorized)
-		return
-	}
-
-	userID, err := util.ExtractIDFromRequest(mux.Vars(r))
-	if err != nil {
-		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
-		return
-	}
-
-	user, err := env.dao.ReadUser(dao.ReadUserInput{
-		ID: userID,
-	})
-	if err != nil {
-		switch err.(type) {
-		case dao.ErrUserNotFound:
-			http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusNotFound)
-		default:
-			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-			http.Error(w, errMsg, http.StatusInternalServerError)
-		}
-		return
-	}
-
-	json.NewEncoder(w).Encode(readUserAuthResponse{
-		AuthID: user.AuthID,
-	})
 }
