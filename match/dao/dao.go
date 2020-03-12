@@ -119,7 +119,7 @@ func (dao *DAO) ListMatch(input ListMatchInput) (*[]Match, error) {
 
 // CreateMatch creates a new match in the datastore, returning the newly created match
 func (dao *DAO) CreateMatch(input CreateMatchInput) (*Match, error) {
-	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO match (auth_id, userOne, userTwo, matchedOn) VALUES ($1, $2, NOW()) RETURNING *", input.UserOne, input.UserTwo)
+	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO match (auth_id, userOne, userTwo, matchedOn) VALUES ($1, $2, $3, NOW()) RETURNING *", input.AuthID, input.UserOne, input.UserTwo)
 
 	var match Match
 	err := row.Scan(&match.ID, &match.AuthID, &match.UserOne, &match.UserTwo, &match.MatchedOn)

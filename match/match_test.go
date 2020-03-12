@@ -25,13 +25,7 @@ func (md *mockDAO) ListMatch(input dao.ListMatchInput) (*[]dao.Match, error) {
 	mockMatchList := make([]dao.Match, 0)
 	for _, match := range md.matchList {
 		if match.AuthID == input.AuthID {
-			mockMatchList = append(mockMatchList, dao.Match{
-				ID:        match.ID,
-				AuthID:    match.AuthID,
-				UserOne:   match.UserOne,
-				UserTwo:   match.UserTwo,
-				MatchedOn: match.MatchedOn,
-			})
+			mockMatchList = append(mockMatchList, match)
 		}
 	}
 
@@ -111,10 +105,10 @@ func (mc *mockComm) CheckUser(userID int64) (bool, error) {
 func makeRequest(env env, method string, url string, body string, authToken string) (*httptest.ResponseRecorder, error) {
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest(method, url, strings.NewReader(body))
-	req.Header.Set("Authorization", "Bearer "+authToken)
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Set("Authorization", "Bearer "+authToken)
 	env.router().ServeHTTP(rec, req)
 	return rec, nil
 }
