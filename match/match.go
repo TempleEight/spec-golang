@@ -113,11 +113,7 @@ func checkAuthorization(env *env, auth *util.Auth, matchID int64) (bool, error) 
 		return false, err
 	}
 
-	if match.ID != auth.ID {
-		return false, nil
-	}
-
-	return true, nil
+	return match.AuthID == auth.ID, nil
 }
 
 func (env *env) listMatchHandler(w http.ResponseWriter, r *http.Request) {
@@ -242,8 +238,14 @@ func (env *env) readMatchHandler(w http.ResponseWriter, r *http.Request) {
 
 	authorized, err := checkAuthorization(env, auth, matchID)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
+		switch err.(type) {
+		case dao.ErrMatchNotFound:
+			errMsg := util.CreateErrorJSON("Unauthorized")
+			http.Error(w, errMsg, http.StatusUnauthorized)
+		default:
+			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			http.Error(w, errMsg, http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -291,8 +293,14 @@ func (env *env) updateMatchHandler(w http.ResponseWriter, r *http.Request) {
 
 	authorized, err := checkAuthorization(env, auth, matchID)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
+		switch err.(type) {
+		case dao.ErrMatchNotFound:
+			errMsg := util.CreateErrorJSON("Unauthorized")
+			http.Error(w, errMsg, http.StatusUnauthorized)
+		default:
+			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			http.Error(w, errMsg, http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -388,8 +396,14 @@ func (env *env) deleteMatchHandler(w http.ResponseWriter, r *http.Request) {
 
 	authorized, err := checkAuthorization(env, auth, matchID)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
+		switch err.(type) {
+		case dao.ErrMatchNotFound:
+			errMsg := util.CreateErrorJSON("Unauthorized")
+			http.Error(w, errMsg, http.StatusUnauthorized)
+		default:
+			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			http.Error(w, errMsg, http.StatusInternalServerError)
+		}
 		return
 	}
 

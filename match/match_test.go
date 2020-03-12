@@ -121,33 +121,40 @@ func makeRequest(env env, method string, url string, body string, authToken stri
 
 // Test that a match list can be read successfully for a given ID
 func TestListMatchHandlerSucceeds(t *testing.T) {
+	// Populate mock datastore
+	matchList := []dao.Match{
+		dao.Match{
+			ID:        0,
+			AuthID:    0,
+			UserOne:   0,
+			UserTwo:   1,
+			MatchedOn: "2020-01-01T12:00:00.000000Z",
+		},
+		dao.Match{
+			ID:        1,
+			AuthID:    0,
+			UserOne:   0,
+			UserTwo:   2,
+			MatchedOn: "2020-01-01T12:00:00.000000Z",
+		},
+		dao.Match{
+			ID:        2,
+			AuthID:    1,
+			UserOne:   1,
+			UserTwo:   2,
+			MatchedOn: "2020-01-01T12:00:00.000000Z",
+		},
+	}
+
 	mockEnv := env{
-		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockDAO{matchList},
 		&mockComm{userIDs: []int64{0, 1, 2}},
-	}
-
-	// Create a match with AuthID 0
-	_, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 0, "UserTwo": 1}`, auth0JWT)
-	if err != nil {
-		t.Fatalf("Could not make first POST request: %s", err.Error())
-	}
-
-	// Create a second match with AuthID 0
-	_, err = makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 0, "UserTwo": 2}`, auth0JWT)
-	if err != nil {
-		t.Fatalf("Could not make second POST request: %s", err.Error())
-	}
-
-	// Create a third match with AuthID 1
-	_, err = makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 1, "UserTwo": 2}`, auth1JWT)
-	if err != nil {
-		t.Fatalf("Could not make third POST request: %s", err.Error())
 	}
 
 	// Read the match list for AuthID 0
 	res, err := makeRequest(mockEnv, http.MethodGet, "/match/all", "", auth0JWT)
 	if err != nil {
-		t.Fatalf("Could not make GET request: %s", err.Error())
+		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
 	if res.Code != http.StatusOK {
@@ -289,21 +296,23 @@ func TestCreateMatchHandlerFailsOnAllInvalidReferences(t *testing.T) {
 
 // Test that a single match can be read successfully
 func TestReadMatchHandlerSucceeds(t *testing.T) {
+	// Populate mock datastore
+	matchList := []dao.Match{dao.Match{
+		ID:        0,
+		AuthID:    0,
+		UserOne:   0,
+		UserTwo:   1,
+		MatchedOn: "2020-01-01T12:00:00.000000Z",
+	}}
+
 	mockEnv := env{
-		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockDAO{matchList},
 		&mockComm{userIDs: []int64{0, 1}},
 	}
 
-	// Create a single match
-	_, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 0, "UserTwo": 1}`, auth0JWT)
-	if err != nil {
-		t.Fatalf("Could not make POST request: %s", err.Error())
-	}
-
-	// Read the match
 	res, err := makeRequest(mockEnv, http.MethodGet, "/match/0", "", auth0JWT)
 	if err != nil {
-		t.Fatalf("Could not make GET request: %s", err.Error())
+		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
 	if res.Code != http.StatusOK {
@@ -347,8 +356,8 @@ func TestReadMatchHandlerFailsOnNonExistentID(t *testing.T) {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
-	// Not Found, since no match exists with that given ID
-	if res.Code != http.StatusNotFound {
+	// Unauthorized, since no match exists with the given ID
+	if res.Code != http.StatusUnauthorized {
 		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }
@@ -365,7 +374,7 @@ func TestReadUserHandlerFailsOnStringID(t *testing.T) {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
-	// Bad Request, since we require an integer
+	// Bad Request, since an integer ID is required
 	if res.Code != http.StatusBadRequest {
 		t.Errorf("Wrong status code: %v", res.Code)
 	}
@@ -373,21 +382,23 @@ func TestReadUserHandlerFailsOnStringID(t *testing.T) {
 
 // Test that a single match can be updated successfully
 func TestUpdateUserHandlerSucceeds(t *testing.T) {
+	// Populate mock datastore
+	matchList := []dao.Match{dao.Match{
+		ID:        0,
+		AuthID:    0,
+		UserOne:   0,
+		UserTwo:   1,
+		MatchedOn: "2020-01-01T12:00:00.000000Z",
+	}}
+
 	mockEnv := env{
-		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockDAO{matchList},
 		&mockComm{userIDs: []int64{0, 1, 2}},
 	}
 
-	// Create a single match
-	_, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 0, "UserTwo": 1}`, auth0JWT)
-	if err != nil {
-		t.Fatalf("Could not make POST request: %s", err.Error())
-	}
-
-	// Update the match
 	res, err := makeRequest(mockEnv, http.MethodPut, "/match/0", `{"UserOne": 0, "UserTwo": 2}`, auth0JWT)
 	if err != nil {
-		t.Fatalf("Could not make PUT request: %s", err.Error())
+		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
 	if res.Code != http.StatusOK {
@@ -420,8 +431,17 @@ func TestUpdateMatchHandlerFailsOnIncompleteBody(t *testing.T) {
 
 // Test that providing a malformed JSON body to the update endpoint fails
 func TestUpdateMatchHandlerFailsOnMalformedJSONBody(t *testing.T) {
+	// Populate mock datastore
+	matchList := []dao.Match{dao.Match{
+		ID:        0,
+		AuthID:    0,
+		UserOne:   0,
+		UserTwo:   1,
+		MatchedOn: "2020-01-01T12:00:00.000000Z",
+	}}
+
 	mockEnv := env{
-		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockDAO{matchList},
 		&mockComm{userIDs: []int64{0, 1}},
 	}
 
@@ -437,8 +457,17 @@ func TestUpdateMatchHandlerFailsOnMalformedJSONBody(t *testing.T) {
 
 // Test that providing no body to the update endpoint fails
 func TestUpdateMatchHandlerFailsOnNoBody(t *testing.T) {
+	// Populate mock datastore
+	matchList := []dao.Match{dao.Match{
+		ID:        0,
+		AuthID:    0,
+		UserOne:   0,
+		UserTwo:   1,
+		MatchedOn: "2020-01-01T12:00:00.000000Z",
+	}}
+
 	mockEnv := env{
-		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockDAO{matchList},
 		&mockComm{userIDs: []int64{0, 1}},
 	}
 
@@ -482,8 +511,8 @@ func TestUpdateMatchHandlerFailsOnNonExistentID(t *testing.T) {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
-	// Not Found, since no match exists with that given ID
-	if res.Code != http.StatusNotFound {
+	// Unauthorized, since no match exists with the given ID
+	if res.Code != http.StatusUnauthorized {
 		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }
@@ -500,7 +529,7 @@ func TestUpdateMatchHandlerFailsOnStringID(t *testing.T) {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
-	// Bad Request, since we require an integer
+	// Bad Request, since an integer ID is required
 	if res.Code != http.StatusBadRequest {
 		t.Errorf("Wrong status code: %v", res.Code)
 	}
@@ -508,8 +537,17 @@ func TestUpdateMatchHandlerFailsOnStringID(t *testing.T) {
 
 // Test that providing an invalid UserOne reference to the update endpoint fails
 func TestUpdateMatchHandlerFailsOnInvalidUserOne(t *testing.T) {
+	// Populate mock datastore
+	matchList := []dao.Match{dao.Match{
+		ID:        0,
+		AuthID:    0,
+		UserOne:   0,
+		UserTwo:   1,
+		MatchedOn: "2020-01-01T12:00:00.000000Z",
+	}}
+
 	mockEnv := env{
-		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockDAO{matchList},
 		&mockComm{userIDs: []int64{0, 1}},
 	}
 
@@ -525,8 +563,17 @@ func TestUpdateMatchHandlerFailsOnInvalidUserOne(t *testing.T) {
 
 // Test that providing an invalid UserTwo reference to the update endpoint fails
 func TestUpdateMatchHandlerFailsOnInvalidUserTwo(t *testing.T) {
+	// Populate mock datastore
+	matchList := []dao.Match{dao.Match{
+		ID:        0,
+		AuthID:    0,
+		UserOne:   0,
+		UserTwo:   1,
+		MatchedOn: "2020-01-01T12:00:00.000000Z",
+	}}
+
 	mockEnv := env{
-		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockDAO{matchList},
 		&mockComm{userIDs: []int64{0, 1}},
 	}
 
@@ -542,8 +589,17 @@ func TestUpdateMatchHandlerFailsOnInvalidUserTwo(t *testing.T) {
 
 // Test that providing all invalid references to the update endpoint fails
 func TestUpdateMatchHandlerFailsOnAllInvalidReferences(t *testing.T) {
+	// Populate mock datastore
+	matchList := []dao.Match{dao.Match{
+		ID:        0,
+		AuthID:    0,
+		UserOne:   0,
+		UserTwo:   1,
+		MatchedOn: "2020-01-01T12:00:00.000000Z",
+	}}
+
 	mockEnv := env{
-		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockDAO{matchList},
 		&mockComm{userIDs: []int64{0, 1}},
 	}
 
@@ -559,21 +615,23 @@ func TestUpdateMatchHandlerFailsOnAllInvalidReferences(t *testing.T) {
 
 // Test that a single match can be deleted successfully
 func TestDeleteMatchHandlerSucceeds(t *testing.T) {
+	// Populate mock datastore
+	matchList := []dao.Match{dao.Match{
+		ID:        0,
+		AuthID:    0,
+		UserOne:   0,
+		UserTwo:   1,
+		MatchedOn: "2020-01-01T12:00:00.000000Z",
+	}}
+
 	mockEnv := env{
-		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockDAO{matchList},
 		&mockComm{userIDs: []int64{0, 1}},
 	}
 
-	// Create a single match
-	_, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne": 0, "UserTwo": 1}`, auth0JWT)
-	if err != nil {
-		t.Fatalf("Could not make POST request: %s", err.Error())
-	}
-
-	// Delete the match
 	res, err := makeRequest(mockEnv, http.MethodDelete, "/match/0", "", auth0JWT)
 	if err != nil {
-		t.Fatalf("Could not make DELETE request: %s", err.Error())
+		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
 	if res.Code != http.StatusOK {
@@ -617,8 +675,8 @@ func TestDeleteMatchHandlerFailsOnNonExistentID(t *testing.T) {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
-	// Not Found, since no match exists with that given ID
-	if res.Code != http.StatusNotFound {
+	// Unauthorized, since no match exists with the given ID
+	if res.Code != http.StatusUnauthorized {
 		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }
@@ -635,7 +693,7 @@ func TestDeleteMatchHandlerFailsOnStringID(t *testing.T) {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
-	// Bad Request, since we require an integer
+	// Bad Request, since an integer ID is required
 	if res.Code != http.StatusBadRequest {
 		t.Errorf("Wrong status code: %v", res.Code)
 	}

@@ -94,7 +94,7 @@ func executeQueryWithRowResponses(db *sql.DB, query string, args ...interface{})
 
 // ListMatch returns a list containing every match in the datastore for a given ID
 func (dao *DAO) ListMatch(input ListMatchInput) (*[]Match, error) {
-	rows, err := executeQueryWithRowResponses(dao.DB, "SELECT * FROM Match WHERE id = $1", input.AuthID)
+	rows, err := executeQueryWithRowResponses(dao.DB, "SELECT * FROM match WHERE auth_id = $1", input.AuthID)
 	if err != nil {
 		return nil, err
 	}
