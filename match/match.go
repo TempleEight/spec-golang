@@ -105,8 +105,28 @@ func jsonMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func checkAuthorization(env *env, auth *util.Auth, matchID int64) (bool, error) {
+	match, err := env.dao.ReadMatch(dao.ReadMatchInput{
+		ID: matchID,
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return match.AuthID == auth.ID, nil
+}
+
 func (env *env) listMatchHandler(w http.ResponseWriter, r *http.Request) {
-	matchList, err := env.dao.ListMatch()
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
+	matchList, err := env.dao.ListMatch(dao.ListMatchInput{
+		AuthID: auth.ID,
+	})
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
@@ -129,8 +149,15 @@ func (env *env) listMatchHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (env *env) createMatchHandler(w http.ResponseWriter, r *http.Request) {
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
 	var req createMatchRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
+	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
@@ -177,6 +204,7 @@ func (env *env) createMatchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	match, err := env.dao.CreateMatch(dao.CreateMatchInput{
+		AuthID:  auth.ID,
 		UserOne: *req.UserOne,
 		UserTwo: *req.UserTwo,
 	})
@@ -195,9 +223,35 @@ func (env *env) createMatchHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (env *env) readMatchHandler(w http.ResponseWriter, r *http.Request) {
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
 	matchID, err := util.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
 		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	authorized, err := checkAuthorization(env, auth, matchID)
+	if err != nil {
+		switch err.(type) {
+		case dao.ErrMatchNotFound:
+			errMsg := util.CreateErrorJSON("Unauthorized")
+			http.Error(w, errMsg, http.StatusUnauthorized)
+		default:
+			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			http.Error(w, errMsg, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	if !authorized {
+		errMsg := util.CreateErrorJSON("Unauthorized")
+		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
 	}
 
@@ -224,9 +278,35 @@ func (env *env) readMatchHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (env *env) updateMatchHandler(w http.ResponseWriter, r *http.Request) {
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
 	matchID, err := util.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
 		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	authorized, err := checkAuthorization(env, auth, matchID)
+	if err != nil {
+		switch err.(type) {
+		case dao.ErrMatchNotFound:
+			errMsg := util.CreateErrorJSON("Unauthorized")
+			http.Error(w, errMsg, http.StatusUnauthorized)
+		default:
+			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			http.Error(w, errMsg, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	if !authorized {
+		errMsg := util.CreateErrorJSON("Unauthorized")
+		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
 	}
 
@@ -301,9 +381,35 @@ func (env *env) updateMatchHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (env *env) deleteMatchHandler(w http.ResponseWriter, r *http.Request) {
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
 	matchID, err := util.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
 		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	authorized, err := checkAuthorization(env, auth, matchID)
+	if err != nil {
+		switch err.(type) {
+		case dao.ErrMatchNotFound:
+			errMsg := util.CreateErrorJSON("Unauthorized")
+			http.Error(w, errMsg, http.StatusUnauthorized)
+		default:
+			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			http.Error(w, errMsg, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	if !authorized {
+		errMsg := util.CreateErrorJSON("Unauthorized")
+		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
 	}
 
