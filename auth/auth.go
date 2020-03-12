@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -16,6 +15,7 @@ import (
 	"github.com/TempleEight/spec-golang/auth/utils"
 	valid "github.com/asaskevich/govalidator"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -117,7 +117,15 @@ func (env *env) createAuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	uuid, err := uuid.NewUUID()
+	if err != nil {
+		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Could not create UUID: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+
 	auth, err := env.dao.CreateAuth(dao.CreateAuthInput{
+		ID:       uuid,
 		Email:    req.Email,
 		Password: string(hashedPassword),
 	})
@@ -195,9 +203,9 @@ func (env *env) readAuthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Create an access token with a 24 hour lifetime
-func createToken(id int, issuer string, secret string) (string, error) {
+func createToken(id uuid.UUID, issuer string, secret string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":  strconv.Itoa(id),
+		"id":  id.String(),
 		"iss": issuer,
 		"exp": time.Now().Add(24 * time.Hour).Unix(),
 	})

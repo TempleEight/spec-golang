@@ -10,6 +10,7 @@ import (
 	"github.com/TempleEight/spec-golang/auth/comm"
 	"github.com/TempleEight/spec-golang/auth/dao"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
 )
 
 type mockDAO struct {
@@ -27,16 +28,12 @@ func (md *mockDAO) CreateAuth(input dao.CreateAuthInput) (*dao.Auth, error) {
 	}
 
 	mockAuth := dao.Auth{
-		ID:       len(md.authList),
+		ID:       input.ID,
 		Email:    input.Email,
 		Password: input.Password,
 	}
 	md.authList = append(md.authList, mockAuth)
-	return &dao.Auth{
-		ID:       mockAuth.ID,
-		Email:    mockAuth.Email,
-		Password: mockAuth.Password,
-	}, nil
+	return &mockAuth, nil
 }
 
 func (md *mockDAO) ReadAuth(input dao.ReadAuthInput) (*dao.Auth, error) {
@@ -116,8 +113,9 @@ func TestCreateAuthHandlerSucceeds(t *testing.T) {
 		t.Fatalf("Claims doesn't contain an ID key")
 	}
 
-	if id.(string) != "0" {
-		t.Fatalf("ID is incorrect, found: %+v, wanted: 0", id)
+	_, err = uuid.Parse(id.(string))
+	if err != nil {
+		t.Fatalf("ID is not a valid UUID")
 	}
 
 	iss, ok := claims["iss"]
@@ -272,8 +270,9 @@ func TestReadAuthHandlerSucceeds(t *testing.T) {
 		t.Fatalf("Claims doesn't contain an ID key")
 	}
 
-	if id.(string) != "0" {
-		t.Fatalf("ID is incorrect, found: %+v, wanted: 0", id)
+	_, err = uuid.Parse(id.(string))
+	if err != nil {
+		t.Fatalf("ID is not a valid UUID")
 	}
 
 	iss, ok := claims["iss"]
