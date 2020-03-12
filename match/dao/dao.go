@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/TempleEight/spec-golang/match/util"
+	"github.com/google/uuid"
+
 	// pq acts as the driver for SQL requests
 	_ "github.com/lib/pq"
 )
@@ -25,40 +27,41 @@ type DAO struct {
 
 // Match encapsulates the object stored in the datastore
 type Match struct {
-	ID        int64
-	AuthID    int64
-	UserOne   int64
-	UserTwo   int64
+	ID        uuid.UUID
+	AuthID    uuid.UUID
+	UserOne   uuid.UUID
+	UserTwo   uuid.UUID
 	MatchedOn string
 }
 
 // ListMatchInput encapsulates the information required to read a match list in the datastore
 type ListMatchInput struct {
-	AuthID int64
+	AuthID uuid.UUID
 }
 
 // CreateMatchInput encapsulates the information required to create a single match in the datastore
 type CreateMatchInput struct {
-	AuthID  int64
-	UserOne int64
-	UserTwo int64
+	ID      uuid.UUID
+	AuthID  uuid.UUID
+	UserOne uuid.UUID
+	UserTwo uuid.UUID
 }
 
 // ReadMatchInput encapsulates the information required to read a single match in the datastore
 type ReadMatchInput struct {
-	ID int64
+	ID uuid.UUID
 }
 
 // UpdateMatchInput encapsulates the information required to update a single match in the datastore
 type UpdateMatchInput struct {
-	ID      int64
-	UserOne int64
-	UserTwo int64
+	ID      uuid.UUID
+	UserOne uuid.UUID
+	UserTwo uuid.UUID
 }
 
 // DeleteMatchInput encapsulates the information required to delete a single match in the datastore
 type DeleteMatchInput struct {
-	ID int64
+	ID uuid.UUID
 }
 
 // Init opens the datastore connection, returning a DAO
@@ -139,7 +142,7 @@ func (dao *DAO) ReadMatch(input ReadMatchInput) (*Match, error) {
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			return nil, ErrMatchNotFound(input.ID)
+			return nil, ErrMatchNotFound(input.ID.String())
 		default:
 			return nil, err
 		}
@@ -157,7 +160,7 @@ func (dao *DAO) UpdateMatch(input UpdateMatchInput) (*Match, error) {
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			return nil, ErrMatchNotFound(input.ID)
+			return nil, ErrMatchNotFound(input.ID.String())
 		default:
 			return nil, err
 		}
@@ -172,7 +175,7 @@ func (dao *DAO) DeleteMatch(input DeleteMatchInput) error {
 	if err != nil {
 		return err
 	} else if rowsAffected == 0 {
-		return ErrMatchNotFound(input.ID)
+		return ErrMatchNotFound(input.ID.String())
 	}
 
 	return nil

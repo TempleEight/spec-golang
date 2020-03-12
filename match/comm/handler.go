@@ -5,11 +5,12 @@ import (
 	"net/http"
 
 	"github.com/TempleEight/spec-golang/match/util"
+	"github.com/google/uuid"
 )
 
 // Comm provides the interface adopted by Handler, allowing for mocking
 type Comm interface {
-	CheckUser(userID int64) (bool, error)
+	CheckUser(userID uuid.UUID) (bool, error)
 }
 
 // Handler maintains the list of services and their associated hostnames
@@ -23,7 +24,7 @@ func Init(config *util.Config) *Handler {
 }
 
 // CheckUser makes a request to the target service to check if a user ID exists
-func (comm *Handler) CheckUser(userID int64) (bool, error) {
+func (comm *Handler) CheckUser(userID uuid.UUID) (bool, error) {
 	hostname, ok := comm.Services["user"]
 	if !ok {
 		return false, fmt.Errorf("service %s's hostname not in config file", "user")

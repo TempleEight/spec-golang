@@ -1,7 +1,7 @@
 CREATE TABLE match (
-  id SERIAL PRIMARY KEY,
-  auth_id INT NOT NULL,
-  userOne INT,
-  userTwo INT,
-  matchedOn TIMESTAMP,
+  id UUID PRIMARY KEY,
+  auth_id UUID NOT NULL,
+  userOne UUID,
+  userTwo UUID,
+  matchedOn TIMESTAMP
 );
