@@ -67,15 +67,19 @@ func makeRequest(env env, method string, url string, body string) (*httptest.Res
 	return rec, nil
 }
 
-// Test that a single auth can be successfully created
-func TestCreateAuthHandlerSucceeds(t *testing.T) {
+func makeMockEnv() env {
 	mockComm := mockComm{}
 	cred, _ := mockComm.CreateJWTCredential()
-	mockEnv := env{
+	return env{
 		&mockDAO{authList: make([]dao.Auth, 0)},
 		&mockComm,
 		cred,
 	}
+}
+
+// Test that a single auth can be successfully created
+func TestCreateAuthHandlerSucceeds(t *testing.T) {
+	mockEnv := makeMockEnv()
 
 	// Create a single auth
 	res, err := makeRequest(mockEnv, http.MethodPost, "/auth", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
@@ -123,20 +127,14 @@ func TestCreateAuthHandlerSucceeds(t *testing.T) {
 		t.Fatalf("Claims doesn't contain an iss key")
 	}
 
-	if iss.(string) != cred.Key {
-		t.Fatalf("iss is incorrect: found %v, wanted %s", iss, cred.Key)
+	if iss.(string) != mockEnv.jwtCredential.Key {
+		t.Fatalf("iss is incorrect: found %v, wanted %s", iss, mockEnv.jwtCredential.Key)
 	}
 }
 
 // Test that providing an empty parameter to the create endpoint fails
 func TestCreateAuthHandlerFailsOnEmptyParameter(t *testing.T) {
-	mockComm := mockComm{}
-	cred, _ := mockComm.CreateJWTCredential()
-	mockEnv := env{
-		&mockDAO{authList: make([]dao.Auth, 0)},
-		&mockComm,
-		cred,
-	}
+	mockEnv := makeMockEnv()
 
 	// Create a single auth
 	res, err := makeRequest(mockEnv, http.MethodPost, "/auth", `{"email": "", "password": "BlackcurrantCrush123"}`)
@@ -151,13 +149,7 @@ func TestCreateAuthHandlerFailsOnEmptyParameter(t *testing.T) {
 
 // Test that providing a malformed JSON body to the create endpoint fails
 func TestCreateAuthHandlerFailsOnMalformedJSON(t *testing.T) {
-	mockComm := mockComm{}
-	cred, _ := mockComm.CreateJWTCredential()
-	mockEnv := env{
-		&mockDAO{authList: make([]dao.Auth, 0)},
-		&mockComm,
-		cred,
-	}
+	mockEnv := makeMockEnv()
 
 	// Create a single auth
 	res, err := makeRequest(mockEnv, http.MethodGet, "/auth", `{"email`)
@@ -172,13 +164,7 @@ func TestCreateAuthHandlerFailsOnMalformedJSON(t *testing.T) {
 
 // Test that providing no body to create endpoint fails
 func TestCreateAuthHandlerFailsOnNoBody(t *testing.T) {
-	mockComm := mockComm{}
-	cred, _ := mockComm.CreateJWTCredential()
-	mockEnv := env{
-		&mockDAO{authList: make([]dao.Auth, 0)},
-		&mockComm,
-		cred,
-	}
+	mockEnv := makeMockEnv()
 
 	// Create a single auth
 	res, err := makeRequest(mockEnv, http.MethodPost, "/auth", "")
@@ -193,13 +179,7 @@ func TestCreateAuthHandlerFailsOnNoBody(t *testing.T) {
 
 // Test that repeating the same request to the create endpoint fails
 func TestCreateAuthHandlerFailsOnDuplicate(t *testing.T) {
-	mockComm := mockComm{}
-	cred, _ := mockComm.CreateJWTCredential()
-	mockEnv := env{
-		&mockDAO{authList: make([]dao.Auth, 0)},
-		&mockComm,
-		cred,
-	}
+	mockEnv := makeMockEnv()
 
 	// Make first request
 	_, err := makeRequest(mockEnv, http.MethodPost, "/auth", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
@@ -220,13 +200,7 @@ func TestCreateAuthHandlerFailsOnDuplicate(t *testing.T) {
 
 // Test that a single auth can be successfully created and then read back
 func TestReadAuthHandlerSucceeds(t *testing.T) {
-	mockComm := mockComm{}
-	cred, _ := mockComm.CreateJWTCredential()
-	mockEnv := env{
-		&mockDAO{authList: make([]dao.Auth, 0)},
-		&mockComm,
-		cred,
-	}
+	mockEnv := makeMockEnv()
 
 	// Create an auth
 	_, err := makeRequest(mockEnv, http.MethodPost, "/auth", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
@@ -280,20 +254,14 @@ func TestReadAuthHandlerSucceeds(t *testing.T) {
 		t.Fatalf("Claims doesn't contain an iss key")
 	}
 
-	if iss.(string) != cred.Key {
-		t.Fatalf("iss is incorrect: found %v, wanted %s", iss, cred.Key)
+	if iss.(string) != mockEnv.jwtCredential.Key {
+		t.Fatalf("iss is incorrect: found %v, wanted %s", iss, mockEnv.jwtCredential.Key)
 	}
 }
 
 // Test that providing an empty parameter to the read endpoint fails
 func TestReadAuthHandlerFailsOnEmptyParameter(t *testing.T) {
-	mockComm := mockComm{}
-	cred, _ := mockComm.CreateJWTCredential()
-	mockEnv := env{
-		&mockDAO{authList: make([]dao.Auth, 0)},
-		&mockComm,
-		cred,
-	}
+	mockEnv := makeMockEnv()
 
 	res, err := makeRequest(mockEnv, http.MethodGet, "/auth", `{"email": "", "password":"BlackcurrantCrush123"}`)
 	if err != nil {
@@ -307,13 +275,7 @@ func TestReadAuthHandlerFailsOnEmptyParameter(t *testing.T) {
 
 // Test that providing a malformed JSON body to the read endpoint fails
 func TestReadAuthHandlerFailsOnMalformedJSON(t *testing.T) {
-	mockComm := mockComm{}
-	cred, _ := mockComm.CreateJWTCredential()
-	mockEnv := env{
-		&mockDAO{authList: make([]dao.Auth, 0)},
-		&mockComm,
-		cred,
-	}
+	mockEnv := makeMockEnv()
 
 	res, err := makeRequest(mockEnv, http.MethodGet, "/auth", `{"email`)
 	if err != nil {
@@ -327,13 +289,7 @@ func TestReadAuthHandlerFailsOnMalformedJSON(t *testing.T) {
 
 // Test that providing no body to the read endpoint fails
 func TestReadAuthHandlerFailsOnNoBody(t *testing.T) {
-	mockComm := mockComm{}
-	cred, _ := mockComm.CreateJWTCredential()
-	mockEnv := env{
-		&mockDAO{authList: make([]dao.Auth, 0)},
-		&mockComm,
-		cred,
-	}
+	mockEnv := makeMockEnv()
 
 	res, err := makeRequest(mockEnv, http.MethodGet, "/auth", "")
 	if err != nil {
@@ -347,13 +303,7 @@ func TestReadAuthHandlerFailsOnNoBody(t *testing.T) {
 
 // Test that providing a non-existent auth to the read endpoint fails
 func TestReadAuthHandlerFailsOnNonExistentAuth(t *testing.T) {
-	mockComm := mockComm{}
-	cred, _ := mockComm.CreateJWTCredential()
-	mockEnv := env{
-		&mockDAO{authList: make([]dao.Auth, 0)},
-		&mockComm,
-		cred,
-	}
+	mockEnv := makeMockEnv()
 
 	res, err := makeRequest(mockEnv, http.MethodGet, "/auth", `{"email": "idonotexist@test.com", "password":"BlackcurrantCrush123"}`)
 	if err != nil {
