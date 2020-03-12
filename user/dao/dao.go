@@ -6,8 +6,8 @@ import (
 
 	"github.com/TempleEight/spec-golang/user/util"
 	// pq acts as the driver for SQL requests
+	"github.com/google/uuid"
 	_ "github.com/lib/pq"
-	uuid "github.com/satori/go.uuid"
 )
 
 // Datastore provides the interface adopted by the DAO, allowing for mocking

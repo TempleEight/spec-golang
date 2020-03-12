@@ -10,8 +10,8 @@ import (
 	"github.com/TempleEight/spec-golang/user/dao"
 	"github.com/TempleEight/spec-golang/user/util"
 	valid "github.com/asaskevich/govalidator"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	uuid "github.com/satori/go.uuid"
 )
 
 // env defines the environment that requests should be executed within
