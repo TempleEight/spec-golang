@@ -103,7 +103,7 @@ func (md *mockDAO) DeleteMatch(input dao.DeleteMatchInput) error {
 	return dao.ErrMatchNotFound(input.ID.String())
 }
 
-func (mc *mockComm) CheckUser(userID uuid.UUID) (bool, error) {
+func (mc *mockComm) CheckUser(userID uuid.UUID, token string) (bool, error) {
 	for _, id := range mc.userIDs {
 		if id == userID {
 			return true, nil
