@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -33,7 +34,7 @@ func TestMain(m *testing.M) {
 
 func TestIntegrationUser(t *testing.T) {
 	// Create user
-	res, err := makeRequest(environment, http.MethodPost, "/user", `{"Name": "Jay"}`, user1JWT)
+	res, err := makeRequest(environment, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT1)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -43,13 +44,13 @@ func TestIntegrationUser(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"ID":"00000000-1234-5678-9012-000000000001","Name":"Jay"}`
+	expected := fmt.Sprintf(`{"ID":"%s","Name":"Jay"}`, UUID1)
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
 
 	// Read that same user
-	res, err = makeRequest(environment, http.MethodGet, "/user/00000000-1234-5678-9012-000000000001", "", user1JWT)
+	res, err = makeRequest(environment, http.MethodGet, fmt.Sprintf("/user/%s", UUID1), "", JWT1)
 	if err != nil {
 		t.Fatalf("Could not make GET request: %s", err.Error())
 	}
@@ -59,13 +60,13 @@ func TestIntegrationUser(t *testing.T) {
 	}
 
 	received = res.Body.String()
-	expected = `{"ID":"00000000-1234-5678-9012-000000000001","Name":"Jay"}`
+	expected = fmt.Sprintf(`{"ID":"%s","Name":"Jay"}`, UUID1)
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
 
 	// Update that same user
-	res, err = makeRequest(environment, http.MethodPut, "/user/00000000-1234-5678-9012-000000000001", `{"Name": "Lewis"}`, user1JWT)
+	res, err = makeRequest(environment, http.MethodPut, fmt.Sprintf("/user/%s", UUID1), `{"Name": "Lewis"}`, JWT1)
 	if err != nil {
 		t.Fatalf("Could not make PUT request: %s", err.Error())
 	}
@@ -75,13 +76,13 @@ func TestIntegrationUser(t *testing.T) {
 	}
 
 	received = res.Body.String()
-	expected = `{"ID":"00000000-1234-5678-9012-000000000001","Name":"Lewis"}`
+	expected = fmt.Sprintf(`{"ID":"%s","Name":"Lewis"}`, UUID1)
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
 
 	// Delete that same user
-	res, err = makeRequest(environment, http.MethodDelete, "/user/00000000-1234-5678-9012-000000000001", "", user1JWT)
+	res, err = makeRequest(environment, http.MethodDelete, fmt.Sprintf("/user/%s", UUID1), "", JWT1)
 	if err != nil {
 		t.Fatalf("Could not make DELETE request: %s", err.Error())
 	}
