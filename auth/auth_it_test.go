@@ -42,7 +42,7 @@ func TestMain(m *testing.M) {
 
 func TestIntegrationAuth(t *testing.T) {
 	// Create a single auth
-	res, err := makeRequest(environment, http.MethodPost, "/auth", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
+	res, err := makeRequest(environment, http.MethodPost, "/auth/register", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -93,7 +93,7 @@ func TestIntegrationAuth(t *testing.T) {
 	}
 
 	// Access that same auth
-	res, err = makeRequest(environment, http.MethodGet, "/auth", `{"email": "jay@test.com", "password":"BlackcurrantCrush123"}`)
+	res, err = makeRequest(environment, http.MethodPost, "/auth/login", `{"email": "jay@test.com", "password":"BlackcurrantCrush123"}`)
 	if err != nil {
 		t.Fatalf("Could not make GET request: %s", err.Error())
 	}
@@ -142,4 +142,3 @@ func TestIntegrationAuth(t *testing.T) {
 		t.Fatalf("iss is incorrect: found %v, wanted %s", iss, environment.jwtCredential.Key)
 	}
 }
-

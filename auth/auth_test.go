@@ -82,7 +82,7 @@ func TestCreateAuthHandlerSucceeds(t *testing.T) {
 	mockEnv := makeMockEnv()
 
 	// Create a single auth
-	res, err := makeRequest(mockEnv, http.MethodPost, "/auth", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth/register", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -137,7 +137,7 @@ func TestCreateAuthHandlerFailsOnEmptyParameter(t *testing.T) {
 	mockEnv := makeMockEnv()
 
 	// Create a single auth
-	res, err := makeRequest(mockEnv, http.MethodPost, "/auth", `{"email": "", "password": "BlackcurrantCrush123"}`)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth/register", `{"email": "", "password": "BlackcurrantCrush123"}`)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -152,9 +152,9 @@ func TestCreateAuthHandlerFailsOnMalformedJSON(t *testing.T) {
 	mockEnv := makeMockEnv()
 
 	// Create a single auth
-	res, err := makeRequest(mockEnv, http.MethodGet, "/auth", `{"email`)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth/register", `{"email`)
 	if err != nil {
-		t.Fatalf("Could not make GET request: %s", err.Error())
+		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
 	if res.Code != http.StatusBadRequest {
@@ -167,7 +167,7 @@ func TestCreateAuthHandlerFailsOnNoBody(t *testing.T) {
 	mockEnv := makeMockEnv()
 
 	// Create a single auth
-	res, err := makeRequest(mockEnv, http.MethodPost, "/auth", "")
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth/register", "")
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -182,13 +182,13 @@ func TestCreateAuthHandlerFailsOnDuplicate(t *testing.T) {
 	mockEnv := makeMockEnv()
 
 	// Make first request
-	_, err := makeRequest(mockEnv, http.MethodPost, "/auth", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/auth/register", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
 	// Make repeat first request
-	res, err := makeRequest(mockEnv, http.MethodPost, "/auth", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth/register", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -203,15 +203,15 @@ func TestReadAuthHandlerSucceeds(t *testing.T) {
 	mockEnv := makeMockEnv()
 
 	// Create an auth
-	_, err := makeRequest(mockEnv, http.MethodPost, "/auth", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/auth/register", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
 	// Access that same auth
-	res, err := makeRequest(mockEnv, http.MethodGet, "/auth", `{"email": "jay@test.com", "password":"BlackcurrantCrush123"}`)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth/login", `{"email": "jay@test.com", "password":"BlackcurrantCrush123"}`)
 	if err != nil {
-		t.Fatalf("Could not make GET request: %s", err.Error())
+		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
 	if res.Code != http.StatusOK {
@@ -263,9 +263,9 @@ func TestReadAuthHandlerSucceeds(t *testing.T) {
 func TestReadAuthHandlerFailsOnEmptyParameter(t *testing.T) {
 	mockEnv := makeMockEnv()
 
-	res, err := makeRequest(mockEnv, http.MethodGet, "/auth", `{"email": "", "password":"BlackcurrantCrush123"}`)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth/login", `{"email": "", "password":"BlackcurrantCrush123"}`)
 	if err != nil {
-		t.Fatalf("Could not make GET request: %s", err.Error())
+		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
 	if res.Code != http.StatusBadRequest {
@@ -277,9 +277,9 @@ func TestReadAuthHandlerFailsOnEmptyParameter(t *testing.T) {
 func TestReadAuthHandlerFailsOnMalformedJSON(t *testing.T) {
 	mockEnv := makeMockEnv()
 
-	res, err := makeRequest(mockEnv, http.MethodGet, "/auth", `{"email`)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth/login", `{"email`)
 	if err != nil {
-		t.Fatalf("Could not make GET request: %s", err.Error())
+		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
 	if res.Code != http.StatusBadRequest {
@@ -291,7 +291,7 @@ func TestReadAuthHandlerFailsOnMalformedJSON(t *testing.T) {
 func TestReadAuthHandlerFailsOnNoBody(t *testing.T) {
 	mockEnv := makeMockEnv()
 
-	res, err := makeRequest(mockEnv, http.MethodGet, "/auth", "")
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth/login", "")
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -305,9 +305,9 @@ func TestReadAuthHandlerFailsOnNoBody(t *testing.T) {
 func TestReadAuthHandlerFailsOnNonExistentAuth(t *testing.T) {
 	mockEnv := makeMockEnv()
 
-	res, err := makeRequest(mockEnv, http.MethodGet, "/auth", `{"email": "idonotexist@test.com", "password":"BlackcurrantCrush123"}`)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth/login", `{"email": "idonotexist@test.com", "password":"BlackcurrantCrush123"}`)
 	if err != nil {
-		t.Fatalf("Could not make GET request: %s", err.Error())
+		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
 	if res.Code != http.StatusUnauthorized {
