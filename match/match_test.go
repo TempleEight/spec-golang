@@ -44,7 +44,7 @@ type mockComm struct {
 func (md *mockDAO) ListMatch(input dao.ListMatchInput) (*[]dao.Match, error) {
 	mockMatchList := make([]dao.Match, 0)
 	for _, match := range md.matchList {
-		if match.AuthID == input.AuthID {
+		if match.CreatedBy == input.AuthID {
 			mockMatchList = append(mockMatchList, match)
 		}
 	}
@@ -60,7 +60,7 @@ func (md *mockDAO) CreateMatch(input dao.CreateMatchInput) (*dao.Match, error) {
 
 	mockMatch := dao.Match{
 		ID:        uuid.MustParse(matchUUID0),
-		AuthID:    input.AuthID,
+		CreatedBy: input.AuthID,
 		UserOne:   input.UserOne,
 		UserTwo:   input.UserTwo,
 		MatchedOn: time,
@@ -68,7 +68,7 @@ func (md *mockDAO) CreateMatch(input dao.CreateMatchInput) (*dao.Match, error) {
 	md.matchList = append(md.matchList, mockMatch)
 	return &dao.Match{
 		ID:        mockMatch.ID,
-		AuthID:    mockMatch.AuthID,
+		CreatedBy: mockMatch.CreatedBy,
 		UserOne:   mockMatch.UserOne,
 		UserTwo:   mockMatch.UserTwo,
 		MatchedOn: mockMatch.MatchedOn,
@@ -97,7 +97,7 @@ func (md *mockDAO) UpdateMatch(input dao.UpdateMatchInput) (*dao.Match, error) {
 			md.matchList[i].MatchedOn = time
 			return &dao.Match{
 				ID:        md.matchList[i].ID,
-				AuthID:    md.matchList[i].AuthID,
+				CreatedBy: md.matchList[i].CreatedBy,
 				UserOne:   md.matchList[i].UserOne,
 				UserTwo:   md.matchList[i].UserTwo,
 				MatchedOn: md.matchList[i].MatchedOn,
@@ -148,21 +148,21 @@ func TestListMatchHandlerSucceeds(t *testing.T) {
 	matchList := []dao.Match{
 		dao.Match{
 			ID:        uuid.MustParse(matchUUID0),
-			AuthID:    uuid.MustParse(UUID0),
+			CreatedBy: uuid.MustParse(UUID0),
 			UserOne:   uuid.MustParse(userUUID0),
 			UserTwo:   uuid.MustParse(userUUID1),
 			MatchedOn: time,
 		},
 		dao.Match{
 			ID:        uuid.MustParse(matchUUID1),
-			AuthID:    uuid.MustParse(UUID0),
+			CreatedBy: uuid.MustParse(UUID0),
 			UserOne:   uuid.MustParse(userUUID0),
 			UserTwo:   uuid.MustParse(userUUID2),
 			MatchedOn: time,
 		},
 		dao.Match{
 			ID:        uuid.MustParse(matchUUID2),
-			AuthID:    uuid.MustParse(UUID1),
+			CreatedBy: uuid.MustParse(UUID1),
 			UserOne:   uuid.MustParse(userUUID1),
 			UserTwo:   uuid.MustParse(userUUID2),
 			MatchedOn: time,
@@ -357,7 +357,7 @@ func TestReadMatchHandlerSucceeds(t *testing.T) {
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
 		ID:        uuid.MustParse(matchUUID0),
-		AuthID:    uuid.MustParse(UUID0),
+		CreatedBy: uuid.MustParse(UUID0),
 		UserOne:   uuid.MustParse(userUUID0),
 		UserTwo:   uuid.MustParse(userUUID1),
 		MatchedOn: time,
@@ -440,7 +440,7 @@ func TestUpdateUserHandlerSucceeds(t *testing.T) {
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
 		ID:        uuid.MustParse(matchUUID0),
-		AuthID:    uuid.MustParse(UUID0),
+		CreatedBy: uuid.MustParse(UUID0),
 		UserOne:   uuid.MustParse(userUUID0),
 		UserTwo:   uuid.MustParse(userUUID1),
 		MatchedOn: time,
@@ -503,7 +503,7 @@ func TestUpdateMatchHandlerFailsOnMalformedJSONBody(t *testing.T) {
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
 		ID:        uuid.MustParse(matchUUID0),
-		AuthID:    uuid.MustParse(UUID0),
+		CreatedBy: uuid.MustParse(UUID0),
 		UserOne:   uuid.MustParse(userUUID0),
 		UserTwo:   uuid.MustParse(userUUID1),
 		MatchedOn: time,
@@ -537,7 +537,7 @@ func TestUpdateMatchHandlerFailsOnNoBody(t *testing.T) {
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
 		ID:        uuid.MustParse(matchUUID0),
-		AuthID:    uuid.MustParse(UUID0),
+		CreatedBy: uuid.MustParse(UUID0),
 		UserOne:   uuid.MustParse(userUUID0),
 		UserTwo:   uuid.MustParse(userUUID1),
 		MatchedOn: time,
@@ -614,7 +614,7 @@ func TestUpdateMatchHandlerFailsOnInvalidUserOne(t *testing.T) {
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
 		ID:        uuid.MustParse(matchUUID0),
-		AuthID:    uuid.MustParse(UUID0),
+		CreatedBy: uuid.MustParse(UUID0),
 		UserOne:   uuid.MustParse(userUUID0),
 		UserTwo:   uuid.MustParse(userUUID1),
 		MatchedOn: time,
@@ -649,7 +649,7 @@ func TestUpdateMatchHandlerFailsOnInvalidUserTwo(t *testing.T) {
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
 		ID:        uuid.MustParse(matchUUID0),
-		AuthID:    uuid.MustParse(UUID0),
+		CreatedBy: uuid.MustParse(UUID0),
 		UserOne:   uuid.MustParse(userUUID0),
 		UserTwo:   uuid.MustParse(userUUID1),
 		MatchedOn: time,
@@ -685,7 +685,7 @@ func TestUpdateMatchHandlerFailsOnAllInvalidReferences(t *testing.T) {
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
 		ID:        uuid.MustParse(matchUUID0),
-		AuthID:    uuid.MustParse(UUID0),
+		CreatedBy: uuid.MustParse(UUID0),
 		UserOne:   uuid.MustParse(userUUID0),
 		UserTwo:   uuid.MustParse(userUUID1),
 		MatchedOn: time,
@@ -721,7 +721,7 @@ func TestDeleteMatchHandlerSucceeds(t *testing.T) {
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
 		ID:        uuid.MustParse(matchUUID0),
-		AuthID:    uuid.MustParse(UUID0),
+		CreatedBy: uuid.MustParse(UUID0),
 		UserOne:   uuid.MustParse(userUUID0),
 		UserTwo:   uuid.MustParse(userUUID1),
 		MatchedOn: time,

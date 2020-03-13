@@ -29,7 +29,7 @@ type DAO struct {
 // Match encapsulates the object stored in the datastore
 type Match struct {
 	ID        uuid.UUID
-	AuthID    uuid.UUID
+	CreatedBy uuid.UUID
 	UserOne   uuid.UUID
 	UserTwo   uuid.UUID
 	MatchedOn time.Time
@@ -98,7 +98,7 @@ func executeQueryWithRowResponses(db *sql.DB, query string, args ...interface{})
 
 // ListMatch returns a list containing every match in the datastore for a given ID
 func (dao *DAO) ListMatch(input ListMatchInput) (*[]Match, error) {
-	rows, err := executeQueryWithRowResponses(dao.DB, "SELECT * FROM match WHERE auth_id = $1", input.AuthID)
+	rows, err := executeQueryWithRowResponses(dao.DB, "SELECT * FROM match WHERE created_by = $1", input.AuthID)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func (dao *DAO) ListMatch(input ListMatchInput) (*[]Match, error) {
 	matchList := make([]Match, 0)
 	for rows.Next() {
 		var match Match
-		err = rows.Scan(&match.ID, &match.AuthID, &match.UserOne, &match.UserTwo, &match.MatchedOn)
+		err = rows.Scan(&match.ID, &match.CreatedBy, &match.UserOne, &match.UserTwo, &match.MatchedOn)
 		if err != nil {
 			return nil, err
 		}
@@ -123,10 +123,10 @@ func (dao *DAO) ListMatch(input ListMatchInput) (*[]Match, error) {
 
 // CreateMatch creates a new match in the datastore, returning the newly created match
 func (dao *DAO) CreateMatch(input CreateMatchInput) (*Match, error) {
-	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO match (id, auth_id, userOne, userTwo, matchedOn) VALUES ($1, $2, $3, $4, NOW()) RETURNING *", input.ID, input.AuthID, input.UserOne, input.UserTwo)
+	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO match (id, created_by, userOne, userTwo, matchedOn) VALUES ($1, $2, $3, $4, NOW()) RETURNING *", input.ID, input.AuthID, input.UserOne, input.UserTwo)
 
 	var match Match
-	err := row.Scan(&match.ID, &match.AuthID, &match.UserOne, &match.UserTwo, &match.MatchedOn)
+	err := row.Scan(&match.ID, &match.CreatedBy, &match.UserOne, &match.UserTwo, &match.MatchedOn)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func (dao *DAO) ReadMatch(input ReadMatchInput) (*Match, error) {
 	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM match WHERE id = $1", input.ID)
 
 	var match Match
-	err := row.Scan(&match.ID, &match.AuthID, &match.UserOne, &match.UserTwo, &match.MatchedOn)
+	err := row.Scan(&match.ID, &match.CreatedBy, &match.UserOne, &match.UserTwo, &match.MatchedOn)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
@@ -157,7 +157,7 @@ func (dao *DAO) UpdateMatch(input UpdateMatchInput) (*Match, error) {
 	row := executeQueryWithRowResponse(dao.DB, "UPDATE match SET userOne = $1, userTwo = $2, matchedOn = NOW() WHERE id = $3 RETURNING *", input.UserOne, input.UserTwo, input.ID)
 
 	var match Match
-	err := row.Scan(&match.ID, &match.AuthID, &match.UserOne, &match.UserTwo, &match.MatchedOn)
+	err := row.Scan(&match.ID, &match.CreatedBy, &match.UserOne, &match.UserTwo, &match.MatchedOn)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:

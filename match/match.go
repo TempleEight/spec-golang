@@ -107,7 +107,7 @@ func jsonMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func checkAuthorization(env *env, auth *util.Auth, matchID uuid.UUID) (bool, error) {
+func checkAuthorization(env *env, matchID uuid.UUID, auth *util.Auth) (bool, error) {
 	match, err := env.dao.ReadMatch(dao.ReadMatchInput{
 		ID: matchID,
 	})
@@ -115,7 +115,7 @@ func checkAuthorization(env *env, auth *util.Auth, matchID uuid.UUID) (bool, err
 		return false, err
 	}
 
-	return match.AuthID == auth.ID, nil
+	return match.CreatedBy == auth.ID, nil
 }
 
 func (env *env) listMatchHandler(w http.ResponseWriter, r *http.Request) {
@@ -246,7 +246,7 @@ func (env *env) readMatchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authorized, err := checkAuthorization(env, auth, matchID)
+	authorized, err := checkAuthorization(env, matchID, auth)
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrMatchNotFound:
@@ -301,7 +301,7 @@ func (env *env) updateMatchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authorized, err := checkAuthorization(env, auth, matchID)
+	authorized, err := checkAuthorization(env, matchID, auth)
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrMatchNotFound:
@@ -404,7 +404,7 @@ func (env *env) deleteMatchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authorized, err := checkAuthorization(env, auth, matchID)
+	authorized, err := checkAuthorization(env, matchID, auth)
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrMatchNotFound:
