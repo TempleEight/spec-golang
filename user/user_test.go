@@ -1,17 +1,23 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/TempleEight/spec-golang/user/dao"
+	"github.com/google/uuid"
 )
 
-// Define 2 JWTs with ID 0 and 1
-const user0JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjoiMDAwMDAwMDAtMTIzNC01Njc4LTkwMTItMDAwMDAwMDAwMDAwIiwiaXNzIjoiZkZTOEttVll1S0FDeUYzd2RwUEtIU1FxbVpWVndqRHEifQ.jMpelsEJUwONtRCQnQCo2v5Ph7cZHloc5R1OvKkU2Ck"
-const user1JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjoiMDAwMDAwMDAtMTIzNC01Njc4LTkwMTItMDAwMDAwMDAwMDAxIiwiaXNzIjoiZkZTOEttVll1S0FDeUYzd2RwUEtIU1FxbVpWVndqRHEifQ.lMmkaK9L2kD2ZnbblSlXdz93cz6jZCALR0KoGlzQKpc"
+// Define 2 UUIDs
+const UUID0 = "00000000-1234-5678-9012-000000000000"
+const UUID1 = "00000000-1234-5678-9012-000000000001"
+
+// Define 2 JWTs corresponding to UUIDs
+const JWT0 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjoiMDAwMDAwMDAtMTIzNC01Njc4LTkwMTItMDAwMDAwMDAwMDAwIiwiaXNzIjoiZkZTOEttVll1S0FDeUYzd2RwUEtIU1FxbVpWVndqRHEifQ.jMpelsEJUwONtRCQnQCo2v5Ph7cZHloc5R1OvKkU2Ck"
+const JWT1 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1ODMyNTc5NzcsImlkIjoiMDAwMDAwMDAtMTIzNC01Njc4LTkwMTItMDAwMDAwMDAwMDAxIiwiaXNzIjoiZkZTOEttVll1S0FDeUYzd2RwUEtIU1FxbVpWVndqRHEifQ.lMmkaK9L2kD2ZnbblSlXdz93cz6jZCALR0KoGlzQKpc"
 
 type mockDAO struct {
 	userList []dao.User
@@ -83,7 +89,7 @@ func TestCreateUserHandlerSucceeds(t *testing.T) {
 	mockEnv := makeMockEnv()
 
 	// Create a single user
-	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -93,7 +99,7 @@ func TestCreateUserHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"ID":"00000000-1234-5678-9012-000000000000","Name":"Jay"}`
+	expected := fmt.Sprintf(`{"ID":"%s","Name":"Jay"}`, UUID0)
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
@@ -104,7 +110,7 @@ func TestCreateUserHandlerFailsOnEmptyParameter(t *testing.T) {
 	mockEnv := makeMockEnv()
 
 	// Create a single user
-	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": ""}`, user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": ""}`, JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -119,7 +125,7 @@ func TestCreateUserHandlerFailsOnMalformedJSONBody(t *testing.T) {
 	mockEnv := makeMockEnv()
 
 	// Create a single user
-	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name"`, user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name"`, JWT0)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
@@ -134,7 +140,7 @@ func TestCreateUserHandlerFailsOnNoBody(t *testing.T) {
 	mockEnv := makeMockEnv()
 
 	// Create a single user
-	res, err := makeRequest(mockEnv, http.MethodPost, "/user", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPost, "/user", "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -164,13 +170,13 @@ func TestReadUserHandlerSucceeds(t *testing.T) {
 	mockEnv := makeMockEnv()
 
 	// Create a single user
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
 
 	// Read that same user
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/00000000-1234-5678-9012-000000000000", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/user/%s", UUID0), "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make GET request: %s", err.Error())
 	}
@@ -180,7 +186,7 @@ func TestReadUserHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"ID":"00000000-1234-5678-9012-000000000000","Name":"Jay"}`
+	expected := fmt.Sprintf(`{"ID":"%s","Name":"Jay"}`, UUID0)
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
@@ -190,7 +196,7 @@ func TestReadUserHandlerSucceeds(t *testing.T) {
 func TestReadUserHandlerFailsOnEmptyID(t *testing.T) {
 	mockEnv := makeMockEnv()
 
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodGet, "/user/", "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -205,7 +211,7 @@ func TestReadUserHandlerFailsOnEmptyID(t *testing.T) {
 func TestReadUserHandlerFailsOnNonExistentID(t *testing.T) {
 	mockEnv := makeMockEnv()
 
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/00000000-0000-0000-0000-000000000000", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/user/%s", uuid.Nil.String()), "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -220,7 +226,7 @@ func TestReadUserHandlerFailsOnNonExistentID(t *testing.T) {
 func TestReadUserHandlerFailsOnEmptyJWT(t *testing.T) {
 	mockEnv := makeMockEnv()
 
-	res, err := makeRequest(mockEnv, http.MethodGet, "/user/00000000-1234-5678-9012-000000000000", `{"Name": "Jay"}`, "")
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/user/%s", UUID0), `{"Name": "Jay"}`, "")
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -235,13 +241,13 @@ func TestUpdateUserHandlerSucceeds(t *testing.T) {
 	mockEnv := makeMockEnv()
 
 	// Create a single user
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
 
 	// Update that same user
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-1234-5678-9012-000000000000", `{"Name": "Lewis"}`, user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/user/%s", UUID0), `{"Name": "Lewis"}`, JWT0)
 	if err != nil {
 		t.Fatalf("Could not make PUT request: %s", err.Error())
 	}
@@ -251,7 +257,7 @@ func TestUpdateUserHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := `{"ID":"00000000-1234-5678-9012-000000000000","Name":"Lewis"}`
+	expected := fmt.Sprintf(`{"ID":"%s","Name":"Lewis"}`, UUID0)
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
 	}
@@ -262,13 +268,13 @@ func TestUpdateUserHandlerFailsOnEmptyParameter(t *testing.T) {
 	mockEnv := makeMockEnv()
 
 	// Create a single user
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
 
 	// Update that same user
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-1234-5678-9012-000000000000", `{"Name": ""}`, user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/user/%s", UUID0), `{"Name": ""}`, JWT0)
 	if err != nil {
 		t.Fatalf("Could not make PUT request: %s", err.Error())
 	}
@@ -283,13 +289,13 @@ func TestUpdateUserHandlerFailsOnMalformedJSONBody(t *testing.T) {
 	mockEnv := makeMockEnv()
 
 	// Create a single user
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
 
 	// Update that same user
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-1234-5678-9012-000000000000", `{"Name"}`, user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/user/%s", UUID0), `{"Name"}`, JWT0)
 	if err != nil {
 		t.Fatalf("Could not make PUT request: %s", err.Error())
 	}
@@ -304,13 +310,13 @@ func TestUpdateUserHandlerFailsOnNoBody(t *testing.T) {
 	mockEnv := makeMockEnv()
 
 	// Create a single user
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
 
 	// Update that same user
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-1234-5678-9012-000000000000", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/user/%s", UUID0), "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make PUT request: %s", err.Error())
 	}
@@ -324,7 +330,7 @@ func TestUpdateUserHandlerFailsOnNoBody(t *testing.T) {
 func TestUpdateUserHandlerFailsOnEmptyID(t *testing.T) {
 	mockEnv := makeMockEnv()
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, "/user/", "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -339,7 +345,7 @@ func TestUpdateUserHandlerFailsOnEmptyID(t *testing.T) {
 func TestUpdateUserHandlerFailsOnNonExistentID(t *testing.T) {
 	mockEnv := makeMockEnv()
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-0000-0000-0000-000000000000", `{"Name":"Will"}`, user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/user/%s", uuid.Nil.String()), `{"Name":"Will"}`, JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -354,7 +360,7 @@ func TestUpdateUserHandlerFailsOnNonExistentID(t *testing.T) {
 func TestUpdateUserHandlerFailsOnEmptyJWT(t *testing.T) {
 	mockEnv := makeMockEnv()
 
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-1234-5678-9012-000000000000", `{"Name": "Jay"}`, "")
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/user/%s", UUID0), `{"Name": "Jay"}`, "")
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -368,14 +374,14 @@ func TestUpdateUserHandlerFailsOnEmptyJWT(t *testing.T) {
 func TestUpdateUserHandlerFailsOnDifferentJWT(t *testing.T) {
 	mockEnv := makeMockEnv()
 
-	// Create a single user with user0JWT
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
+	// Create a single user with JWT0
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
-	// Update a single user with user1JWT
-	res, err := makeRequest(mockEnv, http.MethodPut, "/user/00000000-1234-5678-9012-000000000000", `{"Name": "Lewis"}`, user1JWT)
+	// Update a single user with JWT1
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/user/%s", UUID0), `{"Name": "Lewis"}`, JWT1)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -390,13 +396,13 @@ func TestDeleteUserHandlerSucceeds(t *testing.T) {
 	mockEnv := makeMockEnv()
 
 	// Create a single user
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
 	if err != nil {
 		t.Fatalf("Could not make POST request: %s", err.Error())
 	}
 
 	// Delete that same user
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/00000000-1234-5678-9012-000000000000", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodDelete, fmt.Sprintf("/user/%s", UUID0), "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make DELETE request: %s", err.Error())
 	}
@@ -416,7 +422,7 @@ func TestDeleteUserHandlerSucceeds(t *testing.T) {
 func TestDeleteUserHandlerFailsOnEmptyID(t *testing.T) {
 	mockEnv := makeMockEnv()
 
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/", "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -431,7 +437,7 @@ func TestDeleteUserHandlerFailsOnEmptyID(t *testing.T) {
 func TestDeleteUserHandlerFailsOnNonExistentID(t *testing.T) {
 	mockEnv := makeMockEnv()
 
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/00000000-0000-0000-0000-000000000000", "", user0JWT)
+	res, err := makeRequest(mockEnv, http.MethodDelete, fmt.Sprintf("/user/%s", uuid.Nil.String()), "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -446,7 +452,7 @@ func TestDeleteUserHandlerFailsOnNonExistentID(t *testing.T) {
 func TestDeleteUserHandlerFailsOnEmptyJWT(t *testing.T) {
 	mockEnv := makeMockEnv()
 
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/00000000-1234-5678-9012-000000000000", "", "")
+	res, err := makeRequest(mockEnv, http.MethodDelete, fmt.Sprintf("/user/%s", UUID0), "", "")
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -460,14 +466,14 @@ func TestDeleteUserHandlerFailsOnEmptyJWT(t *testing.T) {
 func TestDeleteUserHandlerFailsOnDifferentJWT(t *testing.T) {
 	mockEnv := makeMockEnv()
 
-	// Create a single user with user0JWT
-	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, user0JWT)
+	// Create a single user with JWT0
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
 
-	// Delete a single user with user1JWT
-	res, err := makeRequest(mockEnv, http.MethodDelete, "/user/00000000-1234-5678-9012-000000000000", "", user1JWT)
+	// Delete a single user with JWT1
+	res, err := makeRequest(mockEnv, http.MethodDelete, fmt.Sprintf("/user/%s", UUID0), "", JWT1)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}

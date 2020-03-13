@@ -1,7 +1,6 @@
 package comm
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
 
@@ -31,7 +30,7 @@ func (comm *Handler) CheckUser(userID uuid.UUID, token string) (bool, error) {
 		return false, fmt.Errorf("service %s's hostname not in config file", "user")
 	}
 
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/%s", hostname, userID.String()), bytes.NewBuffer([]byte(`{"Name": "Jay"}`)))
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/%s", hostname, userID.String()), nil)
 	if err != nil {
 		return false, err
 	}

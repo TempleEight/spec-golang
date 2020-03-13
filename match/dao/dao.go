@@ -3,6 +3,7 @@ package dao
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/TempleEight/spec-golang/match/util"
 	"github.com/google/uuid"
@@ -31,7 +32,7 @@ type Match struct {
 	AuthID    uuid.UUID
 	UserOne   uuid.UUID
 	UserTwo   uuid.UUID
-	MatchedOn string
+	MatchedOn time.Time
 }
 
 // ListMatchInput encapsulates the information required to read a match list in the datastore
