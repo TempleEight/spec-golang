@@ -14,9 +14,8 @@ import (
 	"github.com/TempleEight/spec-golang/match/comm"
 	"github.com/TempleEight/spec-golang/match/dao"
 	"github.com/TempleEight/spec-golang/match/util"
+	"github.com/google/uuid"
 )
-
-const dateTimeFormat = "2006-01-02T15:04:05.000000Z"
 
 var environment env
 
@@ -66,6 +65,14 @@ func TestMain(m *testing.M) {
 }
 
 func TestIntegrationMatch(t *testing.T) {
+	id := testCreateMatch(t)
+	testReadMatch(t, id)
+	testReadMatchList(t)
+	testUpdateMatch(t, id)
+	testDeleteMatch(t, id)
+}
+
+func testCreateMatch(t *testing.T) uuid.UUID {
 	// Create match
 	res, err := makeRequest(environment, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, UUID0, UUID1), JWT0)
 	if err != nil {
@@ -90,13 +97,16 @@ func TestIntegrationMatch(t *testing.T) {
 		t.Fatalf("Wrong value for UserTwo, received: %s, expected: %s", createMatchResponse.UserTwo.String(), UUID1)
 	}
 
-	_, err = time.Parse(dateTimeFormat, createMatchResponse.MatchedOn)
+	_, err = time.Parse(time.RFC3339, createMatchResponse.MatchedOn)
 	if err != nil {
 		t.Fatalf("MatchedOn was in an invalid format: %s", err.Error())
 	}
 
-	// Read that same match
-	res, err = makeRequest(environment, http.MethodGet, fmt.Sprintf("/match/%s", createMatchResponse.ID.String()), "", JWT0)
+	return createMatchResponse.ID
+}
+
+func testReadMatch(t *testing.T, uuid uuid.UUID) {
+	res, err := makeRequest(environment, http.MethodGet, fmt.Sprintf("/match/%s", uuid.String()), "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -119,13 +129,15 @@ func TestIntegrationMatch(t *testing.T) {
 		t.Fatalf("Wrong value for UserTwo, received: %s, expected: %s", readMatchResponse.UserTwo.String(), UUID1)
 	}
 
-	_, err = time.Parse(dateTimeFormat, readMatchResponse.MatchedOn)
+	_, err = time.Parse(time.RFC3339, readMatchResponse.MatchedOn)
 	if err != nil {
 		t.Fatalf("MatchedOn was in an invalid format: %s", err.Error())
 	}
+}
 
+func testReadMatchList(t *testing.T) {
 	// List all matches
-	res, err = makeRequest(environment, http.MethodGet, "/match/all", "", JWT0)
+	res, err := makeRequest(environment, http.MethodGet, "/match/all", "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -153,13 +165,15 @@ func TestIntegrationMatch(t *testing.T) {
 		t.Fatalf("Wrong value for UserTwo, received: %s, expected: %s", match.UserTwo.String(), UUID1)
 	}
 
-	_, err = time.Parse(dateTimeFormat, match.MatchedOn)
+	_, err = time.Parse(time.RFC3339, match.MatchedOn)
 	if err != nil {
 		t.Fatalf("MatchedOn was in an invalid format: %s", err.Error())
 	}
+}
 
+func testUpdateMatch(t *testing.T, uuid uuid.UUID) {
 	// Update that same match by reversing the user order
-	res, err = makeRequest(environment, http.MethodPut, fmt.Sprintf("/match/%s", createMatchResponse.ID.String()), fmt.Sprintf(`{"UserOne":"%s", "UserTwo":"%s"}`, UUID1, UUID0), JWT0)
+	res, err := makeRequest(environment, http.MethodPut, fmt.Sprintf("/match/%s", uuid.String()), fmt.Sprintf(`{"UserOne":"%s", "UserTwo":"%s"}`, UUID1, UUID0), JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
@@ -182,13 +196,14 @@ func TestIntegrationMatch(t *testing.T) {
 		t.Fatalf("Wrong value for UserTwo, received: %s, expected: %s", updateMatchResponse.UserTwo.String(), UUID0)
 	}
 
-	_, err = time.Parse(dateTimeFormat, updateMatchResponse.MatchedOn)
+	_, err = time.Parse(time.RFC3339, updateMatchResponse.MatchedOn)
 	if err != nil {
 		t.Fatalf("MatchedOn was in an invalid format: %s", err.Error())
 	}
+}
 
-	// Delete that match
-	res, err = makeRequest(environment, http.MethodDelete, fmt.Sprintf("/match/%s", createMatchResponse.ID.String()), "", JWT0)
+func testDeleteMatch(t *testing.T, uuid uuid.UUID) {
+	res, err := makeRequest(environment, http.MethodDelete, fmt.Sprintf("/match/%s", uuid.String()), "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}
