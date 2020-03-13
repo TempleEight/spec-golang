@@ -190,12 +190,12 @@ paths:
         - User
       summary: Look up a single user
       parameters:
-          - in: path
-            name: id
-            schema:
-              type: integer
-            required: true
-            description: ID of the user to get
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: ID of the user to get
       responses:
         200:
           description: User details
@@ -219,6 +219,13 @@ paths:
       tags:
         - User
       summary: Delete a single user
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: ID of the user to delete
       responses:
         200:
           description: User details
@@ -236,6 +243,13 @@ paths:
       tags:
         - User
       summary: Update a single user
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: ID of the user to update
       requestBody:
         content:
           application/json:
