@@ -44,7 +44,7 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+JWT0)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", JWT0))
 	_, err = client.Do(req)
 	if err != nil {
 		log.Fatal(err)
@@ -55,7 +55,7 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+JWT1)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", JWT1))
 	_, err = client.Do(req)
 	if err != nil {
 		log.Fatal(err)
