@@ -3,5 +3,5 @@ CREATE TABLE match (
   auth_id UUID NOT NULL,
   userOne UUID,
   userTwo UUID,
-  matchedOn TIMESTAMP WITH TIME ZONE
+  matchedOn TIMESTAMPTZ
 );
