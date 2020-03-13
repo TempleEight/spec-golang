@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/TempleEight/spec-golang/match/comm"
 	"github.com/TempleEight/spec-golang/match/dao"
@@ -142,7 +143,7 @@ func (env *env) listMatchHandler(w http.ResponseWriter, r *http.Request) {
 			ID:        match.ID,
 			UserOne:   match.UserOne,
 			UserTwo:   match.UserTwo,
-			MatchedOn: match.MatchedOn,
+			MatchedOn: match.MatchedOn.Format(time.RFC3339),
 		})
 	}
 
@@ -178,7 +179,7 @@ func (env *env) createMatchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userOneValid, err := env.comm.CheckUser(*req.UserOne)
+	userOneValid, err := env.comm.CheckUser(*req.UserOne, r.Header.Get("Authorization"))
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unable to reach user service: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
@@ -186,12 +187,12 @@ func (env *env) createMatchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !userOneValid {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unknown User: %d", *req.UserOne))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unknown User: %s", req.UserOne.String()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
-	userTwoValid, err := env.comm.CheckUser(*req.UserTwo)
+	userTwoValid, err := env.comm.CheckUser(*req.UserTwo, r.Header.Get("Authorization"))
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unable to reach user service: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
@@ -199,7 +200,7 @@ func (env *env) createMatchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !userTwoValid {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unknown User: %d", *req.UserTwo))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unknown User: %s", req.UserTwo.String()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
@@ -227,7 +228,7 @@ func (env *env) createMatchHandler(w http.ResponseWriter, r *http.Request) {
 		ID:        match.ID,
 		UserOne:   match.UserOne,
 		UserTwo:   match.UserTwo,
-		MatchedOn: match.MatchedOn,
+		MatchedOn: match.MatchedOn.Format(time.RFC3339),
 	})
 }
 
@@ -282,7 +283,7 @@ func (env *env) readMatchHandler(w http.ResponseWriter, r *http.Request) {
 		ID:        match.ID,
 		UserOne:   match.UserOne,
 		UserTwo:   match.UserTwo,
-		MatchedOn: match.MatchedOn,
+		MatchedOn: match.MatchedOn.Format(time.RFC3339),
 	})
 }
 
@@ -339,7 +340,7 @@ func (env *env) updateMatchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userOneValid, err := env.comm.CheckUser(*req.UserOne)
+	userOneValid, err := env.comm.CheckUser(*req.UserOne, r.Header.Get("Authorization"))
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
@@ -352,7 +353,7 @@ func (env *env) updateMatchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userTwoValid, err := env.comm.CheckUser(*req.UserTwo)
+	userTwoValid, err := env.comm.CheckUser(*req.UserTwo, r.Header.Get("Authorization"))
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
@@ -385,7 +386,7 @@ func (env *env) updateMatchHandler(w http.ResponseWriter, r *http.Request) {
 		ID:        match.ID,
 		UserOne:   match.UserOne,
 		UserTwo:   match.UserTwo,
-		MatchedOn: match.MatchedOn,
+		MatchedOn: match.MatchedOn.Format(time.RFC3339),
 	})
 }
 

@@ -3,6 +3,7 @@ package dao
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/TempleEight/spec-golang/match/util"
 	"github.com/google/uuid"
@@ -31,7 +32,7 @@ type Match struct {
 	AuthID    uuid.UUID
 	UserOne   uuid.UUID
 	UserTwo   uuid.UUID
-	MatchedOn string
+	MatchedOn time.Time
 }
 
 // ListMatchInput encapsulates the information required to read a match list in the datastore
@@ -122,7 +123,7 @@ func (dao *DAO) ListMatch(input ListMatchInput) (*[]Match, error) {
 
 // CreateMatch creates a new match in the datastore, returning the newly created match
 func (dao *DAO) CreateMatch(input CreateMatchInput) (*Match, error) {
-	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO match (auth_id, userOne, userTwo, matchedOn) VALUES ($1, $2, $3, NOW()) RETURNING *", input.AuthID, input.UserOne, input.UserTwo)
+	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO match (id, auth_id, userOne, userTwo, matchedOn) VALUES ($1, $2, $3, $4, NOW()) RETURNING *", input.ID, input.AuthID, input.UserOne, input.UserTwo)
 
 	var match Match
 	err := row.Scan(&match.ID, &match.AuthID, &match.UserOne, &match.UserTwo, &match.MatchedOn)
