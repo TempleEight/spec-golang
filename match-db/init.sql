@@ -1,6 +1,6 @@
 CREATE TABLE match (
   id UUID PRIMARY KEY,
-  auth_id UUID NOT NULL,
+  created_by UUID NOT NULL,
   userOne UUID,
   userTwo UUID,
   matchedOn TIMESTAMPTZ
