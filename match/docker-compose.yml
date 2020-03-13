@@ -1,0 +1,45 @@
+version: '3'
+
+services:
+  match:
+    build:
+      context: .
+      dockerfile: test.Dockerfile
+    depends_on:
+      - match-db
+      - user
+    networks:
+      - match-network
+      - parent-network
+
+  match-db:
+    image: postgres:12.1
+    environment:
+      - PGUSER=postgres
+    volumes:
+      - ./../match-db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - match-network
+
+  user:
+    build:
+      context: ../user
+    depends_on:
+      - user-db
+    networks:
+      - user-network
+      - parent-network
+
+  user-db:
+    image: postgres:12.1
+    environment:
+      - PGUSER=postgres
+    volumes:
+      - ./../user-db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - user-network
+
+networks:
+  user-network:
+  match-network:
+  parent-network:

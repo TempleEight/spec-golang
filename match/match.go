@@ -348,7 +348,7 @@ func (env *env) updateMatchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !userOneValid {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unknown User: %d", *req.UserOne))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unknown User: %s", req.UserOne.String()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
@@ -361,7 +361,7 @@ func (env *env) updateMatchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !userTwoValid {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unknown User: %d", *req.UserTwo))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unknown User: %s", req.UserTwo.String()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
