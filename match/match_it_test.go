@@ -80,7 +80,7 @@ func testCreateMatch(t *testing.T) uuid.UUID {
 	}
 
 	if res.Code != http.StatusOK {
-		t.Errorf("Wrong status code: %v", res.Code)
+		t.Fatalf("Wrong status code: %v", res.Code)
 	}
 
 	var createMatchResponse createMatchResponse
@@ -112,7 +112,7 @@ func testReadMatch(t *testing.T, uuid uuid.UUID) {
 	}
 
 	if res.Code != http.StatusOK {
-		t.Errorf("Wrong status code: %v", res.Code)
+		t.Fatalf("Wrong status code: %v", res.Code)
 	}
 
 	var readMatchResponse readMatchResponse
@@ -143,7 +143,7 @@ func testReadMatchList(t *testing.T) {
 	}
 
 	if res.Code != http.StatusOK {
-		t.Errorf("Wrong status code: %v", res.Code)
+		t.Fatalf("Wrong status code: %v", res.Code)
 	}
 
 	var listMatchResponse listMatchResponse
@@ -179,7 +179,7 @@ func testUpdateMatch(t *testing.T, uuid uuid.UUID) {
 	}
 
 	if res.Code != http.StatusOK {
-		t.Errorf("Wrong status code: %v", res.Code)
+		t.Fatalf("Wrong status code: %v", res.Code)
 	}
 
 	var updateMatchResponse updateMatchResponse
@@ -209,12 +209,12 @@ func testDeleteMatch(t *testing.T, uuid uuid.UUID) {
 	}
 
 	if res.Code != http.StatusOK {
-		t.Errorf("Wrong status code: %v", res.Code)
+		t.Fatalf("Wrong status code: %v", res.Code)
 	}
 
 	received := res.Body.String()
 	expected := `{}`
 	if expected != strings.TrimSuffix(received, "\n") {
-		t.Errorf("Handler returned incorrect body, received: %s expected: %s", received, expected)
+		t.Fatalf("Handler returned incorrect body, received: %s expected: %s", received, expected)
 	}
 }
