@@ -6,16 +6,75 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
-	matchComm "github.com/TempleEight/spec-golang/match/comm"
-	matchDAO "github.com/TempleEight/spec-golang/match/dao"
-	"github.com/TempleEight/spec-golang/match/utils"
+	"github.com/TempleEight/spec-golang/match/comm"
+	"github.com/TempleEight/spec-golang/match/dao"
+	"github.com/TempleEight/spec-golang/match/util"
 	valid "github.com/asaskevich/govalidator"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
-var dao matchDAO.DAO
-var comm matchComm.Handler
+// env defines the environment that requests should be executed within
+type env struct {
+	dao  dao.Datastore
+	comm comm.Comm
+}
+
+// createMatchRequest contains the client-provided information required to create a single match
+type createMatchRequest struct {
+	UserOne *uuid.UUID `valid:"-"`
+	UserTwo *uuid.UUID `valid:"-"`
+}
+
+// updateMatchRequest contains the client-provided information required to update a single match, excluding ID
+type updateMatchRequest struct {
+	UserOne *uuid.UUID `valid:"-"`
+	UserTwo *uuid.UUID `valid:"-"`
+}
+
+// listMatchResponse contains a single match list to be returned to the client
+type listMatchResponse struct {
+	MatchList []readMatchResponse
+}
+
+// createMatchResponse contains a newly created match to be returned to the client
+type createMatchResponse struct {
+	ID        uuid.UUID
+	UserOne   uuid.UUID
+	UserTwo   uuid.UUID
+	MatchedOn string
+}
+
+// readMatchResponse contains a single match to be returned to the client
+type readMatchResponse struct {
+	ID        uuid.UUID
+	UserOne   uuid.UUID
+	UserTwo   uuid.UUID
+	MatchedOn string
+}
+
+// updateMatchResponse contains a newly updated match to be returned to the client
+type updateMatchResponse struct {
+	ID        uuid.UUID
+	UserOne   uuid.UUID
+	UserTwo   uuid.UUID
+	MatchedOn string
+}
+
+// router generates a router for this service
+func (env *env) router() *mux.Router {
+	r := mux.NewRouter()
+	// Mux directs to first matching route, i.e. the order matters
+	r.HandleFunc("/match/all", env.listMatchHandler).Methods(http.MethodGet)
+	r.HandleFunc("/match", env.createMatchHandler).Methods(http.MethodPost)
+	r.HandleFunc("/match/{id}", env.readMatchHandler).Methods(http.MethodGet)
+	r.HandleFunc("/match/{id}", env.updateMatchHandler).Methods(http.MethodPut)
+	r.HandleFunc("/match/{id}", env.deleteMatchHandler).Methods(http.MethodDelete)
+	r.Use(jsonMiddleware)
+	return r
+}
 
 func main() {
 	configPtr := flag.String("config", "/etc/match-service/config.json", "configuration filepath")
@@ -24,29 +83,20 @@ func main() {
 	// Require all struct fields by default
 	valid.SetFieldsRequiredByDefault(true)
 
-	config, err := utils.GetConfig(*configPtr)
+	config, err := util.GetConfig(*configPtr)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	dao = matchDAO.DAO{}
-	err = dao.Init(config)
-	comm = matchComm.Handler{}
-	comm.Init(config)
+	d, err := dao.Init(config)
 	if err != nil {
 		log.Fatal(err)
 	}
+	c := comm.Init(config)
 
-	r := mux.NewRouter()
-	// Mux redirects to first matching route, i.e. the order matters
-	r.HandleFunc("/match/all", matchListHandler).Methods(http.MethodGet)
-	r.HandleFunc("/match", matchCreateHandler).Methods(http.MethodPost)
-	r.HandleFunc("/match/{id}", matchGetHandler).Methods(http.MethodGet)
-	r.HandleFunc("/match/{id}", matchDeleteHandler).Methods(http.MethodDelete)
-	r.HandleFunc("/match/{id}", matchUpdateHandler).Methods(http.MethodPut)
-	r.Use(jsonMiddleware)
+	env := env{d, c}
 
-	log.Fatal(http.ListenAndServe(":81", r))
+	log.Fatal(http.ListenAndServe(":81", env.router()))
 }
 
 func jsonMiddleware(next http.Handler) http.Handler {
@@ -57,154 +107,335 @@ func jsonMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func matchCreateHandler(w http.ResponseWriter, r *http.Request) {
-	var req matchDAO.MatchCreateRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
+func checkAuthorization(env *env, matchID uuid.UUID, auth *util.Auth) (bool, error) {
+	match, err := env.dao.ReadMatch(dao.ReadMatchInput{
+		ID: matchID,
+	})
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		return false, err
+	}
+
+	return match.CreatedBy == auth.ID, nil
+}
+
+func (env *env) listMatchHandler(w http.ResponseWriter, r *http.Request) {
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
+	matchList, err := env.dao.ListMatch(dao.ListMatchInput{
+		AuthID: auth.ID,
+	})
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+
+	matchListResp := listMatchResponse{
+		MatchList: make([]readMatchResponse, 0),
+	}
+	for _, match := range *matchList {
+		matchListResp.MatchList = append(matchListResp.MatchList, readMatchResponse{
+			ID:        match.ID,
+			UserOne:   match.UserOne,
+			UserTwo:   match.UserTwo,
+			MatchedOn: match.MatchedOn.Format(time.RFC3339),
+		})
+	}
+
+	json.NewEncoder(w).Encode(matchListResp)
+}
+
+func (env *env) createMatchHandler(w http.ResponseWriter, r *http.Request) {
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
+	var req createMatchRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	if req.UserOne == nil || req.UserTwo == nil {
-		errMsg := utils.CreateErrorJSON("Missing request parameter(s)")
+		errMsg := util.CreateErrorJSON("Missing request parameter(s)")
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	_, err = valid.ValidateStruct(req)
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
-	userOneValid, err := comm.CheckUser(*req.UserOne)
+	userOneValid, err := env.comm.CheckUser(*req.UserOne, r.Header.Get("Authorization"))
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unable to reach user service: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
 	if !userOneValid {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unknown User: %d", *req.UserOne))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unknown User: %s", req.UserOne.String()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
-	userTwoValid, err := comm.CheckUser(*req.UserTwo)
+	userTwoValid, err := env.comm.CheckUser(*req.UserTwo, r.Header.Get("Authorization"))
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unable to reach user service: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
 	if !userTwoValid {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Unknown User: %d", *req.UserTwo))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unknown User: %s", req.UserTwo.String()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
-	err = dao.CreateMatch(req)
+	uuid, err := uuid.NewUUID()
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not create UUID: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(struct{}{})
-}
 
-func matchGetHandler(w http.ResponseWriter, r *http.Request) {
-	matchID, err := utils.ExtractIDFromRequest(mux.Vars(r))
+	match, err := env.dao.CreateMatch(dao.CreateMatchInput{
+		ID:      uuid,
+		AuthID:  auth.ID,
+		UserOne: *req.UserOne,
+		UserTwo: *req.UserTwo,
+	})
 	if err != nil {
-		http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
-	match, err := dao.GetMatch(matchID)
+	json.NewEncoder(w).Encode(createMatchResponse{
+		ID:        match.ID,
+		UserOne:   match.UserOne,
+		UserTwo:   match.UserTwo,
+		MatchedOn: match.MatchedOn.Format(time.RFC3339),
+	})
+}
+
+func (env *env) readMatchHandler(w http.ResponseWriter, r *http.Request) {
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
+	matchID, err := util.ExtractIDFromRequest(mux.Vars(r))
+	if err != nil {
+		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	authorized, err := checkAuthorization(env, matchID, auth)
 	if err != nil {
 		switch err.(type) {
-		case matchDAO.ErrMatchNotFound:
-			http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusNotFound)
+		case dao.ErrMatchNotFound:
+			errMsg := util.CreateErrorJSON("Unauthorized")
+			http.Error(w, errMsg, http.StatusUnauthorized)
 		default:
-			errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 			http.Error(w, errMsg, http.StatusInternalServerError)
 		}
 		return
 	}
 
-	json.NewEncoder(w).Encode(match)
-}
-
-func matchUpdateHandler(w http.ResponseWriter, r *http.Request) {
-	matchID, err := utils.ExtractIDFromRequest(mux.Vars(r))
-	if err != nil {
-		http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+	if !authorized {
+		errMsg := util.CreateErrorJSON("Unauthorized")
+		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
 	}
 
-	var req matchDAO.MatchUpdateRequest
+	match, err := env.dao.ReadMatch(dao.ReadMatchInput{
+		ID: matchID,
+	})
+	if err != nil {
+		switch err.(type) {
+		case dao.ErrMatchNotFound:
+			http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusNotFound)
+		default:
+			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			http.Error(w, errMsg, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	json.NewEncoder(w).Encode(readMatchResponse{
+		ID:        match.ID,
+		UserOne:   match.UserOne,
+		UserTwo:   match.UserTwo,
+		MatchedOn: match.MatchedOn.Format(time.RFC3339),
+	})
+}
+
+func (env *env) updateMatchHandler(w http.ResponseWriter, r *http.Request) {
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
+	matchID, err := util.ExtractIDFromRequest(mux.Vars(r))
+	if err != nil {
+		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	authorized, err := checkAuthorization(env, matchID, auth)
+	if err != nil {
+		switch err.(type) {
+		case dao.ErrMatchNotFound:
+			errMsg := util.CreateErrorJSON("Unauthorized")
+			http.Error(w, errMsg, http.StatusUnauthorized)
+		default:
+			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			http.Error(w, errMsg, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	if !authorized {
+		errMsg := util.CreateErrorJSON("Unauthorized")
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
+	var req updateMatchRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 	if req.UserOne == nil || req.UserTwo == nil {
-		errMsg := utils.CreateErrorJSON("Missing request parameter")
+		errMsg := util.CreateErrorJSON("Missing request parameter")
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	_, err = valid.ValidateStruct(req)
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
-	err = dao.UpdateMatch(matchID, req)
+	userOneValid, err := env.comm.CheckUser(*req.UserOne, r.Header.Get("Authorization"))
 	if err != nil {
-		switch err.(type) {
-		case matchDAO.ErrMatchNotFound:
-			http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusNotFound)
-		default:
-			errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-			http.Error(w, errMsg, http.StatusInternalServerError)
-		}
-		return
-	}
-	json.NewEncoder(w).Encode(struct{}{})
-}
-
-func matchDeleteHandler(w http.ResponseWriter, r *http.Request) {
-	matchID, err := utils.ExtractIDFromRequest(mux.Vars(r))
-	if err != nil {
-		http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusBadRequest)
-		return
-	}
-
-	err = dao.DeleteMatch(matchID)
-	if err != nil {
-		switch err.(type) {
-		case matchDAO.ErrMatchNotFound:
-			http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusNotFound)
-		default:
-			errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-			http.Error(w, errMsg, http.StatusInternalServerError)
-		}
-		return
-	}
-	json.NewEncoder(w).Encode(struct{}{})
-}
-
-func matchListHandler(w http.ResponseWriter, r *http.Request) {
-	matchList, err := dao.ListMatch()
-	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
-	json.NewEncoder(w).Encode(matchList)
+	if !userOneValid {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unknown User: %s", req.UserOne.String()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	userTwoValid, err := env.comm.CheckUser(*req.UserTwo, r.Header.Get("Authorization"))
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()))
+		http.Error(w, errMsg, http.StatusInternalServerError)
+		return
+	}
+
+	if !userTwoValid {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unknown User: %s", req.UserTwo.String()))
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	match, err := env.dao.UpdateMatch(dao.UpdateMatchInput{
+		ID:      matchID,
+		UserOne: *req.UserOne,
+		UserTwo: *req.UserTwo,
+	})
+	if err != nil {
+		switch err.(type) {
+		case dao.ErrMatchNotFound:
+			http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusNotFound)
+		default:
+			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			http.Error(w, errMsg, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	json.NewEncoder(w).Encode(updateMatchResponse{
+		ID:        match.ID,
+		UserOne:   match.UserOne,
+		UserTwo:   match.UserTwo,
+		MatchedOn: match.MatchedOn.Format(time.RFC3339),
+	})
+}
+
+func (env *env) deleteMatchHandler(w http.ResponseWriter, r *http.Request) {
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
+	matchID, err := util.ExtractIDFromRequest(mux.Vars(r))
+	if err != nil {
+		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	authorized, err := checkAuthorization(env, matchID, auth)
+	if err != nil {
+		switch err.(type) {
+		case dao.ErrMatchNotFound:
+			errMsg := util.CreateErrorJSON("Unauthorized")
+			http.Error(w, errMsg, http.StatusUnauthorized)
+		default:
+			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			http.Error(w, errMsg, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	if !authorized {
+		errMsg := util.CreateErrorJSON("Unauthorized")
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
+	err = env.dao.DeleteMatch(dao.DeleteMatchInput{
+		ID: matchID,
+	})
+	if err != nil {
+		switch err.(type) {
+		case dao.ErrMatchNotFound:
+			http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusNotFound)
+		default:
+			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			http.Error(w, errMsg, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	json.NewEncoder(w).Encode(struct{}{})
 }

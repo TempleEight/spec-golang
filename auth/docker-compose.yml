@@ -1,46 +1,13 @@
 version: '3'
 
 services:
-  user:
-    build: ./user
-    ports:
-      - "80:80" 
-    networks: 
-      - user-network 
-      - kong-network
-
-  user-db:
-    image: postgres:12.1 
-    environment:
-      - PGUSER=postgres
-    volumes:
-      - ./user-db/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks: 
-      - user-network 
-
-  match:
-    build: ./match
-    ports:
-      - "81:81" 
-    networks: 
-      - match-network
-      - kong-network
-    
-  match-db:
-    image: postgres:12.1 
-    environment:
-      - PGUSER=postgres
-    volumes:
-      - ./match-db/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks: 
-      - match-network
-
   auth:
-    build: ./auth
+    build:
+      context: .
+      dockerfile: test.Dockerfile
     depends_on:
+      - auth-db
       - kong
-    ports:
-      - "82:82"
     networks:
       - auth-network
       - kong-network
@@ -50,11 +17,11 @@ services:
     environment:
       - PGUSER=postgres
     volumes:
-      - ./auth-db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./../auth-db/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - auth-network
 
-  # API Gateway
+    # API Gateway
   kong-migrations:
     image: kong:2.0.1
     command: kong migrations bootstrap && kong migrations up && kong migrations finish
@@ -62,10 +29,10 @@ services:
       - kong-db
     environment:
       KONG_DATABASE: postgres
-      KONG_PG_DATABASE: kong 
+      KONG_PG_DATABASE: kong
       KONG_PG_HOST: kong-db
-      KONG_PG_PASSWORD: kong 
-      KONG_PG_USER: kong 
+      KONG_PG_PASSWORD: kong
+      KONG_PG_USER: kong
     networks:
       - kong-network
     restart: on-failure
@@ -75,6 +42,7 @@ services:
     user: kong
     depends_on:
       - kong-db
+      - kong-migrations
     environment:
       KONG_ADMIN_ACCESS_LOG: /dev/stdout
       KONG_ADMIN_ERROR_LOG: /dev/stderr
@@ -83,10 +51,10 @@ services:
       KONG_ADMIN_LISTEN: '0.0.0.0:8001'
       KONG_CASSANDRA_CONTACT_POINTS: kong-db
       KONG_DATABASE: postgres
-      KONG_PG_DATABASE: kong 
+      KONG_PG_DATABASE: kong
       KONG_PG_HOST: kong-db
       KONG_PG_PASSWORD: kong
-      KONG_PG_USER: kong 
+      KONG_PG_USER: kong
     networks:
       - kong-network
     ports:
@@ -100,7 +68,7 @@ services:
       timeout: 10s
       retries: 10
     restart: on-failure
-    
+
   kong-db:
     image: postgres:12.1
     environment:
@@ -119,7 +87,5 @@ services:
       - kong-network
 
 networks:
-  user-network:
-  match-network:
   auth-network:
   kong-network:

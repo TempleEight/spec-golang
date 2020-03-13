@@ -7,13 +7,56 @@ import (
 	"log"
 	"net/http"
 
-	userDAO "github.com/TempleEight/spec-golang/user/dao"
-	"github.com/TempleEight/spec-golang/user/utils"
+	"github.com/TempleEight/spec-golang/user/dao"
+	"github.com/TempleEight/spec-golang/user/util"
 	valid "github.com/asaskevich/govalidator"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
-var dao userDAO.DAO
+// env defines the environment that requests should be executed within
+type env struct {
+	dao dao.Datastore
+}
+
+// createUserRequest contains the client-provided information required to create a single user
+type createUserRequest struct {
+	Name string `valid:"type(string),required,stringlength(2|255)"`
+}
+
+// updateUserRequest contains the client-provided information required to update a single user, excluding ID
+type updateUserRequest struct {
+	Name string `valid:"type(string),required,stringlength(2|255)"`
+}
+
+// createUserResponse contains a newly created user to be returned to the client
+type createUserResponse struct {
+	ID   uuid.UUID
+	Name string
+}
+
+// readUserResponse contains a single user to be returned to the client
+type readUserResponse struct {
+	ID   uuid.UUID
+	Name string
+}
+
+// updateUserResponse contains a newly updated user to be returned to the client
+type updateUserResponse struct {
+	ID   uuid.UUID
+	Name string
+}
+
+// router generates a router for this service
+func (env *env) router() *mux.Router {
+	r := mux.NewRouter()
+	r.HandleFunc("/user", env.createUserHandler).Methods(http.MethodPost)
+	r.HandleFunc("/user/{id}", env.readUserHandler).Methods(http.MethodGet)
+	r.HandleFunc("/user/{id}", env.updateUserHandler).Methods(http.MethodPut)
+	r.HandleFunc("/user/{id}", env.deleteUserHandler).Methods(http.MethodDelete)
+	r.Use(jsonMiddleware)
+	return r
+}
 
 func main() {
 	configPtr := flag.String("config", "/etc/user-service/config.json", "configuration filepath")
@@ -22,25 +65,18 @@ func main() {
 	// Require all struct fields by default
 	valid.SetFieldsRequiredByDefault(true)
 
-	config, err := utils.GetConfig(*configPtr)
+	config, err := util.GetConfig(*configPtr)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	dao = userDAO.DAO{}
-	err = dao.Init(config)
+	d, err := dao.Init(config)
 	if err != nil {
 		log.Fatal(err)
 	}
+	env := env{d}
 
-	r := mux.NewRouter()
-	r.HandleFunc("/user", userCreateHandler).Methods(http.MethodPost)
-	r.HandleFunc("/user/{id}", userGetHandler).Methods(http.MethodGet)
-	r.HandleFunc("/user/{id}", userUpdateHandler).Methods(http.MethodPut)
-	r.HandleFunc("/user/{id}", userDeleteHandler).Methods(http.MethodDelete)
-	r.Use(jsonMiddleware)
-
-	log.Fatal(http.ListenAndServe(":80", r))
+	log.Fatal(http.ListenAndServe(":80", env.router()))
 }
 
 func jsonMiddleware(next http.Handler) http.Handler {
@@ -51,105 +87,170 @@ func jsonMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func userCreateHandler(w http.ResponseWriter, r *http.Request) {
-	var req userDAO.UserCreateRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
+func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
+	var req createUserRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	_, err = valid.ValidateStruct(req)
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
-	err = dao.CreateUser(req)
+	user, err := env.dao.CreateUser(dao.CreateUserInput{
+		ID:   auth.ID,
+		Name: req.Name,
+	})
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(struct{}{})
+
+	json.NewEncoder(w).Encode(createUserResponse{
+		ID:   user.ID,
+		Name: user.Name,
+	})
 }
 
-func userGetHandler(w http.ResponseWriter, r *http.Request) {
-	userID, err := utils.ExtractIDFromRequest(mux.Vars(r))
+func (env *env) readUserHandler(w http.ResponseWriter, r *http.Request) {
+	_, err := util.ExtractAuthIDFromRequest(r.Header)
 	if err != nil {
-		http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
 	}
 
-	user, err := dao.GetUser(userID)
+	userID, err := util.ExtractIDFromRequest(mux.Vars(r))
+	if err != nil {
+		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	user, err := env.dao.ReadUser(dao.ReadUserInput{
+		ID: userID,
+	})
 	if err != nil {
 		switch err.(type) {
-		case userDAO.ErrUserNotFound:
-			http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusNotFound)
+		case dao.ErrUserNotFound:
+			http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusNotFound)
 		default:
-			errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 			http.Error(w, errMsg, http.StatusInternalServerError)
 		}
 		return
 	}
-	json.NewEncoder(w).Encode(user)
+
+	json.NewEncoder(w).Encode(readUserResponse{
+		ID:   user.ID,
+		Name: user.Name,
+	})
 }
 
-func userUpdateHandler(w http.ResponseWriter, r *http.Request) {
-	userID, err := utils.ExtractIDFromRequest(mux.Vars(r))
+func (env *env) updateUserHandler(w http.ResponseWriter, r *http.Request) {
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
 	if err != nil {
-		http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
 	}
 
-	var req userDAO.UserUpdateRequest
+	userID, err := util.ExtractIDFromRequest(mux.Vars(r))
+	if err != nil {
+		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	// Only the auth that created the user can update it
+	if auth.ID != userID {
+		errMsg := util.CreateErrorJSON("Not authorized to make request")
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
+	var req updateUserRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	_, err = valid.ValidateStruct(req)
 	if err != nil {
-		errMsg := utils.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
-	err = dao.UpdateUser(userID, req)
+	user, err := env.dao.UpdateUser(dao.UpdateUserInput{
+		ID:   userID,
+		Name: req.Name,
+	})
 	if err != nil {
 		switch err.(type) {
-		case userDAO.ErrUserNotFound:
-			http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusNotFound)
+		case dao.ErrUserNotFound:
+			http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusNotFound)
 		default:
-			errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 			http.Error(w, errMsg, http.StatusInternalServerError)
 		}
 		return
 	}
-	json.NewEncoder(w).Encode(struct{}{})
+
+	json.NewEncoder(w).Encode(updateUserResponse{
+		ID:   user.ID,
+		Name: user.Name,
+	})
 }
 
-func userDeleteHandler(w http.ResponseWriter, r *http.Request) {
-	userID, err := utils.ExtractIDFromRequest(mux.Vars(r))
+func (env *env) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
 	if err != nil {
-		http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
+		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
 	}
 
-	err = dao.DeleteUser(userID)
+	userID, err := util.ExtractIDFromRequest(mux.Vars(r))
+	if err != nil {
+		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	// Only the auth that created the user can delete it
+	if auth.ID != userID {
+		errMsg := util.CreateErrorJSON("Not authorized to make request")
+		http.Error(w, errMsg, http.StatusUnauthorized)
+		return
+	}
+
+	err = env.dao.DeleteUser(dao.DeleteUserInput{
+		ID: userID,
+	})
 	if err != nil {
 		switch err.(type) {
-		case userDAO.ErrUserNotFound:
-			http.Error(w, utils.CreateErrorJSON(err.Error()), http.StatusNotFound)
+		case dao.ErrUserNotFound:
+			http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusNotFound)
 		default:
-			errMsg := utils.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
+			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 			http.Error(w, errMsg, http.StatusInternalServerError)
 		}
 		return
 	}
+
 	json.NewEncoder(w).Encode(struct{}{})
 }

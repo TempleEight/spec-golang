@@ -1,10 +1,8 @@
-package utils
+package util
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
-	"strconv"
 )
 
 // GetConfig returns a configuration object from decoding the given configuration file
@@ -31,19 +29,4 @@ func CreateErrorJSON(message string) string {
 		return err.Error()
 	}
 	return string(json)
-}
-
-// ExtractIDFromRequest extracts the parameter provided under parameter ID and converts it into an integer
-func ExtractIDFromRequest(requestParams map[string]string) (int64, error) {
-	idStr := requestParams["id"]
-	if len(idStr) == 0 {
-		return 0, errors.New("No ID provided")
-	}
-
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return 0, errors.New("Invalid ID provided")
-	}
-
-	return id, nil
 }

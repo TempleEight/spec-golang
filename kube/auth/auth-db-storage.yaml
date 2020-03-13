@@ -1,0 +1,34 @@
+# Persistent Volume that stored Postgres' data
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: auth-db-volume
+  labels:
+    type: local
+    app: auth-db
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Delete
+  hostPath:
+    path: "/data/auth-db"
+---
+# The claim into the persistent storage used by the pod to store
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  creationTimestamp: null
+  labels:
+    app: auth-db
+  name: auth-db-claim
+spec:
+  accessModes:
+  - ReadWriteMany
+  volumeName: auth-db-volume
+  storageClassName: manual
+  resources:
+    requests:
+      storage: 100Mi

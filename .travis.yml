@@ -1,0 +1,7 @@
+sudo: required
+
+language: go
+
+script: 
+# Run unit and integration tests
+- for svc in user auth match; do cd $svc && docker-compose up --build $svc && cd ..; done

@@ -1,0 +1,9 @@
+{
+  "user": "postgres",
+  "dbName": "postgres",
+  "host": "auth-db",
+  "sslMode": "disable",
+  "services": {
+    "kong-admin": "http://kong:8001"
+  }
+}

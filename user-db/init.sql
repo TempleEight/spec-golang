@@ -1,4 +1,4 @@
-CREATE TABLE User_Temple (
-    id SERIAL PRIMARY KEY,
-    name TEXT
+CREATE TABLE user_temple (
+  id UUID PRIMARY KEY,
+  name TEXT
 );
