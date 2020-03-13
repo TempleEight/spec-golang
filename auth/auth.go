@@ -26,33 +26,33 @@ type env struct {
 	jwtCredential *comm.JWTCredential
 }
 
-// createAuthRequest contains the client-provided information required to create a single auth
-type createAuthRequest struct {
+// registerAuthRequest contains the client-provided information required to create a single auth
+type registerAuthRequest struct {
 	Email    string `valid:"email,required"`
 	Password string `valid:"type(string),required,stringlength(8|64)"`
 }
 
-// readAuthRequest contains the client-provided information required to validate an auth
-type readAuthRequest struct {
+// loginAuthRequest contains the client-provided information required to login an existing auth
+type loginAuthRequest struct {
 	Email    string `valid:"email,required"`
 	Password string `valid:"type(string),required,stringlength(8|64)"`
 }
 
-// createAuthResponse contains an access token
-type createAuthResponse struct {
+// registerAuthResponse contains an access token
+type registerAuthResponse struct {
 	AccessToken string
 }
 
-// readAuthResponse contains an access token
-type readAuthResponse struct {
+// loginAuthResponse contains an access token
+type loginAuthResponse struct {
 	AccessToken string
 }
 
 // router generates a router for this service
 func (env *env) router() *mux.Router {
 	r := mux.NewRouter()
-	r.HandleFunc("/auth", env.createAuthHandler).Methods(http.MethodPost)
-	r.HandleFunc("/auth", env.readAuthHandler).Methods(http.MethodGet)
+	r.HandleFunc("/auth/register", env.registerAuthHandler).Methods(http.MethodPost)
+	r.HandleFunc("/auth/login", env.loginAuthHandler).Methods(http.MethodPost)
 	r.Use(jsonMiddleware)
 	return r
 }
@@ -93,8 +93,8 @@ func jsonMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func (env *env) createAuthHandler(w http.ResponseWriter, r *http.Request) {
-	var req createAuthRequest
+func (env *env) registerAuthHandler(w http.ResponseWriter, r *http.Request) {
+	var req registerAuthRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
@@ -147,13 +147,13 @@ func (env *env) createAuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(createAuthResponse{
+	json.NewEncoder(w).Encode(registerAuthResponse{
 		AccessToken: accessToken,
 	})
 }
 
-func (env *env) readAuthHandler(w http.ResponseWriter, r *http.Request) {
-	var req readAuthRequest
+func (env *env) loginAuthHandler(w http.ResponseWriter, r *http.Request) {
+	var req loginAuthRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
@@ -197,7 +197,7 @@ func (env *env) readAuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(readAuthResponse{
+	json.NewEncoder(w).Encode(loginAuthResponse{
 		AccessToken: accessToken,
 	})
 }
