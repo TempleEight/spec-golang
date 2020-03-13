@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/TempleEight/spec-golang/match/dao"
 	"github.com/google/uuid"
@@ -29,6 +30,9 @@ const userUUID0 = "00000002-1234-5678-9012-000000000000"
 const userUUID1 = "00000002-1234-5678-9012-000000000001"
 const userUUID2 = "00000002-1234-5678-9012-000000000002"
 
+const time0 = "2020-01-01T12:00:00Z"
+const time1 = "2020-12-31T12:00:00Z"
+
 type mockDAO struct {
 	matchList []dao.Match
 }
@@ -49,12 +53,17 @@ func (md *mockDAO) ListMatch(input dao.ListMatchInput) (*[]dao.Match, error) {
 }
 
 func (md *mockDAO) CreateMatch(input dao.CreateMatchInput) (*dao.Match, error) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		return nil, err
+	}
+
 	mockMatch := dao.Match{
 		ID:        uuid.MustParse(matchUUID0),
 		AuthID:    input.AuthID,
 		UserOne:   input.UserOne,
 		UserTwo:   input.UserTwo,
-		MatchedOn: "2020-01-01T12:00:00.000000Z",
+		MatchedOn: time,
 	}
 	md.matchList = append(md.matchList, mockMatch)
 	return &dao.Match{
@@ -76,11 +85,16 @@ func (md *mockDAO) ReadMatch(input dao.ReadMatchInput) (*dao.Match, error) {
 }
 
 func (md *mockDAO) UpdateMatch(input dao.UpdateMatchInput) (*dao.Match, error) {
+	time, err := time.Parse(time.RFC3339, time1)
+	if err != nil {
+		return nil, err
+	}
+
 	for i, match := range md.matchList {
 		if match.ID == input.ID {
 			md.matchList[i].UserOne = input.UserOne
 			md.matchList[i].UserTwo = input.UserTwo
-			md.matchList[i].MatchedOn = "2020-12-31T12:00:00.000000Z"
+			md.matchList[i].MatchedOn = time
 			return &dao.Match{
 				ID:        md.matchList[i].ID,
 				AuthID:    md.matchList[i].AuthID,
@@ -125,6 +139,11 @@ func makeRequest(env env, method string, url string, body string, authToken stri
 
 // Test that a match list can be read successfully for a given ID
 func TestListMatchHandlerSucceeds(t *testing.T) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		t.Fatalf("Could not parse time: %s", err.Error())
+	}
+
 	// Populate mock datastore
 	matchList := []dao.Match{
 		dao.Match{
@@ -132,21 +151,21 @@ func TestListMatchHandlerSucceeds(t *testing.T) {
 			AuthID:    uuid.MustParse(UUID0),
 			UserOne:   uuid.MustParse(userUUID0),
 			UserTwo:   uuid.MustParse(userUUID1),
-			MatchedOn: "2020-01-01T12:00:00.000000Z",
+			MatchedOn: time,
 		},
 		dao.Match{
 			ID:        uuid.MustParse(matchUUID1),
 			AuthID:    uuid.MustParse(UUID0),
 			UserOne:   uuid.MustParse(userUUID0),
 			UserTwo:   uuid.MustParse(userUUID2),
-			MatchedOn: "2020-01-01T12:00:00.000000Z",
+			MatchedOn: time,
 		},
 		dao.Match{
 			ID:        uuid.MustParse(matchUUID2),
 			AuthID:    uuid.MustParse(UUID1),
 			UserOne:   uuid.MustParse(userUUID1),
 			UserTwo:   uuid.MustParse(userUUID2),
-			MatchedOn: "2020-01-01T12:00:00.000000Z",
+			MatchedOn: time,
 		},
 	}
 
@@ -170,8 +189,8 @@ func TestListMatchHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := fmt.Sprintf(`{"MatchList":[{"ID":"%s","UserOne":"%s","UserTwo":"%s","MatchedOn":"2020-01-01T12:00:00.000000Z"},{"ID":"%s","UserOne":"%s","UserTwo":"%s","MatchedOn":"2020-01-01T12:00:00.000000Z"}]}`,
-		matchUUID0, userUUID0, userUUID1, matchUUID1, userUUID0, userUUID2)
+	expected := fmt.Sprintf(`{"MatchList":[{"ID":"%s","UserOne":"%s","UserTwo":"%s","MatchedOn":"%s"},{"ID":"%s","UserOne":"%s","UserTwo":"%s","MatchedOn":"%s"}]}`,
+		matchUUID0, userUUID0, userUUID1, time0, matchUUID1, userUUID0, userUUID2, time0)
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: received %+v, expected %+v", received, expected)
 	}
@@ -198,8 +217,8 @@ func TestCreateMatchHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := fmt.Sprintf(`{"ID":"%s","UserOne":"%s","UserTwo":"%s","MatchedOn":"2020-01-01T12:00:00.000000Z"}`, matchUUID0,
-		userUUID0, userUUID1)
+	expected := fmt.Sprintf(`{"ID":"%s","UserOne":"%s","UserTwo":"%s","MatchedOn":"%s"}`, matchUUID0,
+		userUUID0, userUUID1, time0)
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: received %+v, expected %+v", received, expected)
 	}
@@ -330,13 +349,18 @@ func TestCreateMatchHandlerFailsOnAllInvalidReferences(t *testing.T) {
 
 // Test that a single match can be read successfully
 func TestReadMatchHandlerSucceeds(t *testing.T) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		t.Fatalf("Could not parse time: %s", err.Error())
+	}
+
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
 		ID:        uuid.MustParse(matchUUID0),
 		AuthID:    uuid.MustParse(UUID0),
 		UserOne:   uuid.MustParse(userUUID0),
 		UserTwo:   uuid.MustParse(userUUID1),
-		MatchedOn: "2020-01-01T12:00:00.000000Z",
+		MatchedOn: time,
 	}}
 
 	mockEnv := env{
@@ -357,8 +381,8 @@ func TestReadMatchHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := fmt.Sprintf(`{"ID":"%s","UserOne":"%s","UserTwo":"%s","MatchedOn":"2020-01-01T12:00:00.000000Z"}`, matchUUID0,
-		userUUID0, userUUID1)
+	expected := fmt.Sprintf(`{"ID":"%s","UserOne":"%s","UserTwo":"%s","MatchedOn":"%s"}`, matchUUID0,
+		userUUID0, userUUID1, time0)
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: received %+v, expected %+v", received, expected)
 	}
@@ -408,13 +432,18 @@ func TestReadMatchHandlerFailsOnNonExistentID(t *testing.T) {
 
 // Test that a single match can be updated successfully
 func TestUpdateUserHandlerSucceeds(t *testing.T) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		t.Fatalf("Could not parse time: %s", err.Error())
+	}
+
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
 		ID:        uuid.MustParse(matchUUID0),
 		AuthID:    uuid.MustParse(UUID0),
 		UserOne:   uuid.MustParse(userUUID0),
 		UserTwo:   uuid.MustParse(userUUID1),
-		MatchedOn: "2020-01-01T12:00:00.000000Z",
+		MatchedOn: time,
 	}}
 
 	mockEnv := env{
@@ -437,8 +466,8 @@ func TestUpdateUserHandlerSucceeds(t *testing.T) {
 	}
 
 	received := res.Body.String()
-	expected := fmt.Sprintf(`{"ID":"%s","UserOne":"%s","UserTwo":"%s","MatchedOn":"2020-12-31T12:00:00.000000Z"}`,
-		matchUUID0, userUUID0, userUUID2)
+	expected := fmt.Sprintf(`{"ID":"%s","UserOne":"%s","UserTwo":"%s","MatchedOn":"%s"}`,
+		matchUUID0, userUUID0, userUUID2, time1)
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: received %+v, expected %+v", received, expected)
 	}
@@ -466,13 +495,18 @@ func TestUpdateMatchHandlerFailsOnIncompleteBody(t *testing.T) {
 
 // Test that providing a malformed JSON body to the update endpoint fails
 func TestUpdateMatchHandlerFailsOnMalformedJSONBody(t *testing.T) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		t.Fatalf("Could not parse time: %s", err.Error())
+	}
+
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
 		ID:        uuid.MustParse(matchUUID0),
 		AuthID:    uuid.MustParse(UUID0),
 		UserOne:   uuid.MustParse(userUUID0),
 		UserTwo:   uuid.MustParse(userUUID1),
-		MatchedOn: "2020-01-01T12:00:00.000000Z",
+		MatchedOn: time,
 	}}
 
 	mockEnv := env{
@@ -495,13 +529,18 @@ func TestUpdateMatchHandlerFailsOnMalformedJSONBody(t *testing.T) {
 
 // Test that providing no body to the update endpoint fails
 func TestUpdateMatchHandlerFailsOnNoBody(t *testing.T) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		t.Fatalf("Could not parse time: %s", err.Error())
+	}
+
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
 		ID:        uuid.MustParse(matchUUID0),
 		AuthID:    uuid.MustParse(UUID0),
 		UserOne:   uuid.MustParse(userUUID0),
 		UserTwo:   uuid.MustParse(userUUID1),
-		MatchedOn: "2020-01-01T12:00:00.000000Z",
+		MatchedOn: time,
 	}}
 
 	mockEnv := env{
@@ -567,13 +606,18 @@ func TestUpdateMatchHandlerFailsOnNonExistentID(t *testing.T) {
 
 // Test that providing an invalid UserOne reference to the update endpoint fails
 func TestUpdateMatchHandlerFailsOnInvalidUserOne(t *testing.T) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		t.Fatalf("Could not parse time: %s", err.Error())
+	}
+
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
 		ID:        uuid.MustParse(matchUUID0),
 		AuthID:    uuid.MustParse(UUID0),
 		UserOne:   uuid.MustParse(userUUID0),
 		UserTwo:   uuid.MustParse(userUUID1),
-		MatchedOn: "2020-01-01T12:00:00.000000Z",
+		MatchedOn: time,
 	}}
 
 	mockEnv := env{
@@ -597,13 +641,18 @@ func TestUpdateMatchHandlerFailsOnInvalidUserOne(t *testing.T) {
 
 // Test that providing an invalid UserTwo reference to the update endpoint fails
 func TestUpdateMatchHandlerFailsOnInvalidUserTwo(t *testing.T) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		t.Fatalf("Could not parse time: %s", err.Error())
+	}
+
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
 		ID:        uuid.MustParse(matchUUID0),
 		AuthID:    uuid.MustParse(UUID0),
 		UserOne:   uuid.MustParse(userUUID0),
 		UserTwo:   uuid.MustParse(userUUID1),
-		MatchedOn: "2020-01-01T12:00:00.000000Z",
+		MatchedOn: time,
 	}}
 
 	mockEnv := env{
@@ -628,13 +677,18 @@ func TestUpdateMatchHandlerFailsOnInvalidUserTwo(t *testing.T) {
 
 // Test that providing all invalid references to the update endpoint fails
 func TestUpdateMatchHandlerFailsOnAllInvalidReferences(t *testing.T) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		t.Fatalf("Could not parse time: %s", err.Error())
+	}
+
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
 		ID:        uuid.MustParse(matchUUID0),
 		AuthID:    uuid.MustParse(UUID0),
 		UserOne:   uuid.MustParse(userUUID0),
 		UserTwo:   uuid.MustParse(userUUID1),
-		MatchedOn: "2020-01-01T12:00:00.000000Z",
+		MatchedOn: time,
 	}}
 
 	mockEnv := env{
@@ -659,13 +713,18 @@ func TestUpdateMatchHandlerFailsOnAllInvalidReferences(t *testing.T) {
 
 // Test that a single match can be deleted successfully
 func TestDeleteMatchHandlerSucceeds(t *testing.T) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		t.Fatalf("Could not parse time: %s", err.Error())
+	}
+
 	// Populate mock datastore
 	matchList := []dao.Match{dao.Match{
 		ID:        uuid.MustParse(matchUUID0),
 		AuthID:    uuid.MustParse(UUID0),
 		UserOne:   uuid.MustParse(userUUID0),
 		UserTwo:   uuid.MustParse(userUUID1),
-		MatchedOn: "2020-01-01T12:00:00.000000Z",
+		MatchedOn: time,
 	}}
 
 	mockEnv := env{

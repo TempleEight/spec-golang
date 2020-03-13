@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/TempleEight/spec-golang/match/comm"
 	"github.com/TempleEight/spec-golang/match/dao"
@@ -142,7 +143,7 @@ func (env *env) listMatchHandler(w http.ResponseWriter, r *http.Request) {
 			ID:        match.ID,
 			UserOne:   match.UserOne,
 			UserTwo:   match.UserTwo,
-			MatchedOn: match.MatchedOn,
+			MatchedOn: match.MatchedOn.Format(time.RFC3339),
 		})
 	}
 
@@ -227,7 +228,7 @@ func (env *env) createMatchHandler(w http.ResponseWriter, r *http.Request) {
 		ID:        match.ID,
 		UserOne:   match.UserOne,
 		UserTwo:   match.UserTwo,
-		MatchedOn: match.MatchedOn,
+		MatchedOn: match.MatchedOn.Format(time.RFC3339),
 	})
 }
 
@@ -282,7 +283,7 @@ func (env *env) readMatchHandler(w http.ResponseWriter, r *http.Request) {
 		ID:        match.ID,
 		UserOne:   match.UserOne,
 		UserTwo:   match.UserTwo,
-		MatchedOn: match.MatchedOn,
+		MatchedOn: match.MatchedOn.Format(time.RFC3339),
 	})
 }
 
@@ -385,7 +386,7 @@ func (env *env) updateMatchHandler(w http.ResponseWriter, r *http.Request) {
 		ID:        match.ID,
 		UserOne:   match.UserOne,
 		UserTwo:   match.UserTwo,
-		MatchedOn: match.MatchedOn,
+		MatchedOn: match.MatchedOn.Format(time.RFC3339),
 	})
 }
 
