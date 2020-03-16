@@ -16,7 +16,7 @@ import (
 
 // env defines the environment that requests should be executed within
 type env struct {
-	dao dao.Datastore
+	dao  dao.Datastore
 	hook Hook
 }
 
@@ -119,7 +119,7 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 		Name: req.Name,
 	}
 
-	for _, hook := range env.hook.beforeCreateHooks{
+	for _, hook := range env.hook.beforeCreateHooks {
 		err := (*hook)(env, req, &input)
 		if err != nil {
 			errMsg := util.CreateErrorJSON(err.Error())
@@ -135,7 +135,7 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, hook := range env.hook.afterCreateHooks{
+	for _, hook := range env.hook.afterCreateHooks {
 		err := (*hook)(env, user)
 		if err != nil {
 			errMsg := util.CreateErrorJSON(err.Error())
