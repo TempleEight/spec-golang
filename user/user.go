@@ -164,9 +164,20 @@ func (env *env) readUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := env.dao.ReadUser(dao.ReadUserInput{
+	input := dao.ReadUserInput{
 		ID: userID,
-	})
+	}
+
+	for _, hook := range env.hook.beforeReadHooks {
+		err := (*hook)(env, &input)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
+	}
+
+	user, err := env.dao.ReadUser(input)
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrUserNotFound:
@@ -176,6 +187,15 @@ func (env *env) readUserHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, errMsg, http.StatusInternalServerError)
 		}
 		return
+	}
+
+	for _, hook := range env.hook.afterReadHooks {
+		err := (*hook)(env, user)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(readUserResponse{
@@ -220,10 +240,21 @@ func (env *env) updateUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := env.dao.UpdateUser(dao.UpdateUserInput{
+	input := dao.UpdateUserInput{
 		ID:   userID,
 		Name: req.Name,
-	})
+	}
+
+	for _, hook := range env.hook.beforeUpdateHooks {
+		err := (*hook)(env, req, &input)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
+	}
+
+	user, err := env.dao.UpdateUser(input)
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrUserNotFound:
@@ -233,6 +264,15 @@ func (env *env) updateUserHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, errMsg, http.StatusInternalServerError)
 		}
 		return
+	}
+
+	for _, hook := range env.hook.afterUpdateHooks {
+		err := (*hook)(env, user)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(updateUserResponse{
@@ -262,9 +302,20 @@ func (env *env) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = env.dao.DeleteUser(dao.DeleteUserInput{
+	input := dao.DeleteUserInput{
 		ID: userID,
-	})
+	}
+
+	for _, hook := range env.hook.beforeDeleteHooks {
+		err := (*hook)(env, &input)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
+	}
+
+	err = env.dao.DeleteUser(input)
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrUserNotFound:
@@ -274,6 +325,15 @@ func (env *env) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, errMsg, http.StatusInternalServerError)
 		}
 		return
+	}
+
+	for _, hook := range env.hook.afterDeleteHooks {
+		err := (*hook)(env)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(struct{}{})
