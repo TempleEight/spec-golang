@@ -49,7 +49,7 @@ type updateUserResponse struct {
 }
 
 // router generates a router for this service
-func (env *env) router() *mux.Router {
+func defaultRouter(env *env) *mux.Router {
 	r := mux.NewRouter()
 	r.HandleFunc("/user", env.createUserHandler).Methods(http.MethodPost)
 	r.HandleFunc("/user/{id}", env.readUserHandler).Methods(http.MethodGet)
@@ -78,9 +78,10 @@ func main() {
 	env := env{d, Hook{}}
 
 	// Call into non-generated entry-point
-	env.setup()
+	router := defaultRouter(&env)
+	env.setup(router)
 
-	log.Fatal(http.ListenAndServe(":80", env.router()))
+	log.Fatal(http.ListenAndServe(":80", router))
 }
 
 func jsonMiddleware(next http.Handler) http.Handler {
