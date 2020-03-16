@@ -4,6 +4,6 @@ language: go
 
 script: 
 # Run unit and integration tests
-- cd user && docker-compose up --build user && cd ..; done
-- cd auth && docker-compose up --build auth && cd ..; done
-- cd match && docker-compose up --build match && cd ..; done
+- cd user && docker-compose up --build user && cd ..
+- cd auth && docker-compose up --build auth && cd ..
+- cd match && docker-compose up --build match && cd ..
