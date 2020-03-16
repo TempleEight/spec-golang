@@ -81,6 +81,7 @@ func makeRequest(env env, method string, url string, body string, authToken stri
 func makeMockEnv() env {
 	return env{
 		&mockDAO{userList: make([]dao.User, 0)},
+		Hook{},
 	}
 }
 
