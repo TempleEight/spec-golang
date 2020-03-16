@@ -17,6 +17,7 @@ import (
 // env defines the environment that requests should be executed within
 type env struct {
 	dao dao.Datastore
+	hook Hook
 }
 
 // createUserRequest contains the client-provided information required to create a single user
@@ -74,7 +75,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	env := env{d}
+	env := env{d, Hook{}}
+
+	// Call into non-generated entry-point
+	env.setup()
 
 	log.Fatal(http.ListenAndServe(":80", env.router()))
 }
@@ -110,14 +114,34 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := env.dao.CreateUser(dao.CreateUserInput{
+	input := dao.CreateUserInput{
 		ID:   auth.ID,
 		Name: req.Name,
-	})
+	}
+
+	for _, hook := range env.hook.beforeCreateHooks{
+		err := (*hook)(env, req, &input)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
+	}
+
+	user, err := env.dao.CreateUser(input)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
+	}
+
+	for _, hook := range env.hook.afterCreateHooks{
+		err := (*hook)(env, user)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(createUserResponse{
