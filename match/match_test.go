@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -355,6 +356,110 @@ func TestCreateMatchHandlerFailsOnAllInvalidReferences(t *testing.T) {
 	}
 }
 
+// Test that a before create hook is successfully invoked
+func TestCreateMatchHandlerBeforeHookSucceeds(t *testing.T) {
+	mockEnv := env{
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
+		Hook{},
+	}
+
+	mockEnv.hook.BeforeCreate(func(env *env, req createMatchRequest, input *dao.CreateMatchInput) *HookError {
+		input.UserOne = uuid.Nil
+		return nil
+	})
+
+	res, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, UUID0, UUID1), JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusBadRequest {
+		t.Fatalf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that a before create hook is successfully invoked and request is aborted
+func TestCreateMatchHandlerBeforeHookAbortsRequest(t *testing.T) {
+	mockEnv := env{
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
+		Hook{},
+	}
+
+	mockEnv.hook.BeforeCreate(func(env *env, req createMatchRequest, input *dao.CreateMatchInput) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	res, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, userUUID0, userUUID1), JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Fatalf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that an after create hook is successfully invoked
+func TestCreateMatchHandlerAfterHookSucceeds(t *testing.T) {
+	mockEnv := env{
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
+		Hook{},
+	}
+
+	mockEnv.hook.AfterCreate(func(env *env, match *dao.Match) *HookError {
+		match.ID = uuid.Nil
+		return nil
+	})
+
+	res, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, userUUID0, userUUID1), JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	received := res.Body.String()
+	expected := fmt.Sprintf(`{"ID":"%s","UserOne":"%s","UserTwo":"%s","MatchedOn":"%s"}`, uuid.Nil, userUUID0, userUUID1, time0)
+	if expected != strings.TrimSuffix(received, "\n") {
+		t.Errorf("Handler returned incorrect body: received %+v, expected %+v", received, expected)
+	}
+}
+
+// Test that an after create hook is successfully invoked
+func TestCreateMatchHandlerAfterHookAbortsRequest(t *testing.T) {
+	mockEnv := env{
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
+		Hook{},
+	}
+
+	mockEnv.hook.AfterCreate(func(env *env, match *dao.Match) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	res, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, userUUID0, userUUID1), JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Fatalf("Wrong status code: %v", res.Code)
+	}
+}
+
 // Test that a single match can be read successfully
 func TestReadMatchHandlerSucceeds(t *testing.T) {
 	time, err := time.Parse(time.RFC3339, time0)
@@ -437,6 +542,142 @@ func TestReadMatchHandlerFailsOnNonExistentID(t *testing.T) {
 
 	// Unauthorized, since no match exists with the given ID
 	if res.Code != http.StatusUnauthorized {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that a before read hook is successfully invoked
+func TestReadMatchHandlerBeforeHookSucceeds(t *testing.T) {
+	mockEnv := env{
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
+		Hook{},
+	}
+
+	mockEnv.hook.BeforeRead(func(env *env, input *dao.ReadMatchInput) *HookError {
+		input.ID = uuid.Nil
+		return nil
+	})
+
+	// Create a single match
+	_, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, userUUID0, userUUID1), JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Read that same match
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/match/%s", matchUUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusNotFound {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that a before read hook is successfully invoked
+func TestReadMatchHandlerBeforeHookAbortsRequest(t *testing.T) {
+	mockEnv := env{
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
+		Hook{},
+	}
+
+	mockEnv.hook.BeforeRead(func(env *env, input *dao.ReadMatchInput) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	// Create a single match
+	_, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, userUUID0, userUUID1), JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Read a single match
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/match/%s", matchUUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that an after read hook is successfully invoked
+func TestReadMatchHandlerAfterHookSucceeds(t *testing.T) {
+	mockEnv := env{
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
+		Hook{},
+	}
+
+	mockEnv.hook.AfterRead(func(env *env, match *dao.Match) *HookError {
+		match.ID = uuid.Nil
+		return nil
+	})
+
+	// Create a single match
+	_, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, userUUID0, userUUID1), JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Read a single match
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/match/%s", matchUUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusOK {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+
+	received := res.Body.String()
+	expected := fmt.Sprintf(`{"ID":"%s","UserOne":"%s","UserTwo":"%s","MatchedOn":"%s"}`, uuid.Nil, userUUID0, userUUID1, time0)
+	if expected != strings.TrimSuffix(received, "\n") {
+		t.Errorf("Handler returned incorrect body: received %+v, expected %+v", received, expected)
+	}
+}
+
+// Test that an after read hook is successfully invoked and request is aborted
+func TestReadUserHandlerAfterHookAbortsRequest(t *testing.T) {
+	mockEnv := env{
+		&mockDAO{matchList: make([]dao.Match, 0)},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
+		Hook{},
+	}
+
+	mockEnv.hook.AfterRead(func(env *env, user *dao.Match) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	// Create a single match
+	_, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, userUUID0, userUUID1), JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Read a single match
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/match/%s", matchUUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
 		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }

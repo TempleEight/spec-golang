@@ -217,16 +217,36 @@ func (env *env) createMatchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	match, err := env.dao.CreateMatch(dao.CreateMatchInput{
+	input := dao.CreateMatchInput{
 		ID:      uuid,
 		AuthID:  auth.ID,
 		UserOne: *req.UserOne,
 		UserTwo: *req.UserTwo,
-	})
+	}
+
+	for _, hook := range env.hook.beforeCreateHooks {
+		err := (*hook)(env, req, &input)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
+	}
+
+	match, err := env.dao.CreateMatch(input)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
+	}
+
+	for _, hook := range env.hook.afterCreateHooks {
+		err := (*hook)(env, match)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(createMatchResponse{
@@ -270,9 +290,20 @@ func (env *env) readMatchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	match, err := env.dao.ReadMatch(dao.ReadMatchInput{
+	input := dao.ReadMatchInput{
 		ID: matchID,
-	})
+	}
+
+	for _, hook := range env.hook.beforeReadHooks {
+		err := (*hook)(env, &input)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
+	}
+
+	match, err := env.dao.ReadMatch(input)
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrMatchNotFound:
@@ -282,6 +313,15 @@ func (env *env) readMatchHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, errMsg, http.StatusInternalServerError)
 		}
 		return
+	}
+
+	for _, hook := range env.hook.afterReadHooks {
+		err := (*hook)(env, match)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(readMatchResponse{
