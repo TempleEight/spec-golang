@@ -20,6 +20,7 @@ import (
 type env struct {
 	dao  dao.Datastore
 	comm comm.Comm
+	hook Hook
 }
 
 // createMatchRequest contains the client-provided information required to create a single match
@@ -63,8 +64,8 @@ type updateMatchResponse struct {
 	MatchedOn string
 }
 
-// router generates a router for this service
-func (env *env) router() *mux.Router {
+// defaultRouter generates a router for this service
+func defaultRouter(env *env) *mux.Router {
 	r := mux.NewRouter()
 	// Mux directs to first matching route, i.e. the order matters
 	r.HandleFunc("/match/all", env.listMatchHandler).Methods(http.MethodGet)
@@ -94,9 +95,13 @@ func main() {
 	}
 	c := comm.Init(config)
 
-	env := env{d, c}
+	env := env{d, c, Hook{}}
 
-	log.Fatal(http.ListenAndServe(":81", env.router()))
+	// Call into non-generated entry-point
+	router := defaultRouter(&env)
+	env.setup(router)
+
+	log.Fatal(http.ListenAndServe(":81", router))
 }
 
 func jsonMiddleware(next http.Handler) http.Handler {

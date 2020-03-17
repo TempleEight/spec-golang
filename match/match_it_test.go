@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 	}
 	c := comm.Init(config)
 
-	environment = env{d, c}
+	environment = env{d, c, Hook{}}
 
 	// Create two users for the test
 	url := config.Services["user"]

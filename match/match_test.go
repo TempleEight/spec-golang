@@ -133,7 +133,7 @@ func makeRequest(env env, method string, url string, body string, authToken stri
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+authToken)
-	env.router().ServeHTTP(rec, req)
+	defaultRouter(&env).ServeHTTP(rec, req)
 	return rec, nil
 }
 
@@ -176,6 +176,7 @@ func TestListMatchHandlerSucceeds(t *testing.T) {
 			uuid.MustParse(userUUID1),
 			uuid.MustParse(userUUID2),
 		}},
+		Hook{},
 	}
 
 	// Read the match list for UUID0
@@ -204,6 +205,7 @@ func TestCreateMatchHandlerSucceeds(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, userUUID0,
@@ -232,6 +234,7 @@ func TestCreateMatchHandlerFailsOnIncompleteBody(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s"}`, userUUID0), JWT0)
@@ -252,6 +255,7 @@ func TestCreateMatchHandlerFailsOnMalformedJSONBody(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", `{"UserOne"`, JWT0)
@@ -272,6 +276,7 @@ func TestCreateMatchHandlerFailsOnNoBody(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	// Create a single match
@@ -293,6 +298,7 @@ func TestCreateMatchHandlerFailsOnInvalidUserOne(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`,
@@ -314,6 +320,7 @@ func TestCreateMatchHandlerFailsOnInvalidUserTwo(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`,
@@ -335,6 +342,7 @@ func TestCreateMatchHandlerFailsOnAllInvalidReferences(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, uuid.Nil.String(), uuid.Nil.String()), JWT0)
@@ -369,6 +377,7 @@ func TestReadMatchHandlerSucceeds(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/match/%s", matchUUID0), "", JWT0)
@@ -396,6 +405,7 @@ func TestReadMatchHandlerFailsOnEmptyID(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodGet, "/match/", "", JWT0)
@@ -417,6 +427,7 @@ func TestReadMatchHandlerFailsOnNonExistentID(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/match/%s", uuid.Nil.String()), "", JWT0)
@@ -453,6 +464,7 @@ func TestUpdateUserHandlerSucceeds(t *testing.T) {
 			uuid.MustParse(userUUID1),
 			uuid.MustParse(userUUID2),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/match/%s", matchUUID0),
@@ -481,6 +493,7 @@ func TestUpdateMatchHandlerFailsOnIncompleteBody(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPost, "/match", fmt.Sprintf(`{"UserOne": "%s"}`, userUUID0), JWT0)
@@ -515,6 +528,7 @@ func TestUpdateMatchHandlerFailsOnMalformedJSONBody(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/match/%s", matchUUID0), `{"UserOne"`, JWT0)
@@ -549,6 +563,7 @@ func TestUpdateMatchHandlerFailsOnNoBody(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/match/%s", matchUUID0), "", JWT0)
@@ -569,6 +584,7 @@ func TestUpdateMatchHandlerFailsOnEmptyID(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPut, "/match/", "", JWT0)
@@ -590,6 +606,7 @@ func TestUpdateMatchHandlerFailsOnNonExistentID(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/match/%s", uuid.Nil.String()),
@@ -626,6 +643,7 @@ func TestUpdateMatchHandlerFailsOnInvalidUserOne(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/match/%s", matchUUID0),
@@ -661,6 +679,7 @@ func TestUpdateMatchHandlerFailsOnInvalidUserTwo(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/match/%s", matchUUID0),
@@ -697,6 +716,7 @@ func TestUpdateMatchHandlerFailsOnAllInvalidReferences(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/match/%s", matchUUID0),
@@ -733,6 +753,7 @@ func TestDeleteMatchHandlerSucceeds(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodDelete, fmt.Sprintf("/match/%s", matchUUID0), "", JWT0)
@@ -759,6 +780,7 @@ func TestDeleteMatchHandlerFailsOnEmptyID(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodDelete, "/match/", "", JWT0)
@@ -780,6 +802,7 @@ func TestDeleteMatchHandlerFailsOnNonExistentID(t *testing.T) {
 			uuid.MustParse(userUUID0),
 			uuid.MustParse(userUUID1),
 		}},
+		Hook{},
 	}
 
 	res, err := makeRequest(mockEnv, http.MethodDelete, fmt.Sprintf("/match/%s", uuid.Nil.String()), "", JWT0)
