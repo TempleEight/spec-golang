@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -166,6 +167,98 @@ func TestCreateUserHandlerFailsOnEmptyJWT(t *testing.T) {
 	}
 }
 
+// Test that a before create hook is successfully invoked
+func TestCreateUserHandlerBeforeHookSucceeds(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.BeforeCreate(func(env *env, req createUserRequest, input *dao.CreateUserInput) *HookError {
+		// Set all name fields to Lewis
+		input.Name = "Lewis"
+		return nil
+	})
+
+	// Create a single user
+	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusOK {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+
+	received := res.Body.String()
+	expected := fmt.Sprintf(`{"ID":"%s","Name":"Lewis"}`, UUID0)
+	if expected != strings.TrimSuffix(received, "\n") {
+		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
+	}
+}
+
+// Test that a before create hook is successfully invoked and request is aborted
+func TestCreateUserHandlerBeforeHookAbortsRequest(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.BeforeCreate(func(env *env, req createUserRequest, input *dao.CreateUserInput) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	// Create a single user
+	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that an after create hook is successfully invoked
+func TestCreateUserHandlerAfterHookSucceeds(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.AfterCreate(func(env *env, user *dao.User) *HookError {
+		// Set all response fields to Lewis
+		user.Name = "Lewis"
+		return nil
+	})
+
+	// Create a single user
+	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusOK {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+
+	received := res.Body.String()
+	expected := fmt.Sprintf(`{"ID":"%s","Name":"Lewis"}`, UUID0)
+	if expected != strings.TrimSuffix(received, "\n") {
+		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
+	}
+}
+
+// Test that an after create hook is successfully invoked
+func TestCreateUserHandlerAfterHookAbortsRequest(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.AfterCreate(func(env *env, user *dao.User) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	// Create a single user
+	res, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
 // Test that a single user can be successfully created and then read back
 func TestReadUserHandlerSucceeds(t *testing.T) {
 	mockEnv := makeMockEnv()
@@ -233,6 +326,109 @@ func TestReadUserHandlerFailsOnEmptyJWT(t *testing.T) {
 	}
 
 	if res.Code != http.StatusUnauthorized {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that a before read hook is successfully invoked
+func TestReadUserHandlerBeforeHookSucceeds(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.BeforeRead(func(env *env, input *dao.ReadUserInput) *HookError {
+		// Set uuid to Nil
+		input.ID = uuid.Nil
+		return nil
+	})
+
+	// Create a single user
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Read that same user
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/user/%s", UUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusNotFound {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that a before read hook is successfully invoked and request is aborted
+func TestReadUserHandlerBeforeHookAbortsRequest(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.BeforeRead(func(env *env, input *dao.ReadUserInput) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	// Read a single user
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/user/%s", UUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that an after read hook is successfully invoked
+func TestReadUserHandlerAfterHookSucceeds(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.AfterRead(func(env *env, user *dao.User) *HookError {
+		user.Name = "Lewis"
+		return nil
+	})
+
+	// Create a single user
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Read that same user
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/user/%s", UUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusOK {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+
+	received := res.Body.String()
+	expected := fmt.Sprintf(`{"ID":"%s","Name":"Lewis"}`, UUID0)
+	if expected != strings.TrimSuffix(received, "\n") {
+		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
+	}
+}
+
+// Test that an after read hook is successfully invoked and request is aborted
+func TestReadUserHandlerAfterHookAbortsRequest(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.AfterRead(func(env *env, user *dao.User) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	// Create a single user
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Read a single user
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/user/%s", UUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
 		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }
@@ -392,6 +588,120 @@ func TestUpdateUserHandlerFailsOnDifferentJWT(t *testing.T) {
 	}
 }
 
+// Test that a before update hook is successfully invoked
+func TestUpdateUserHandlerBeforeHookSucceeds(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.BeforeUpdate(func(env *env, req updateUserRequest, input *dao.UpdateUserInput) *HookError {
+		input.Name = "Will"
+		return nil
+	})
+
+	// Create a single user
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Update that same user
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/user/%s", UUID0), `{"Name":"Lewis"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusOK {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+
+	received := res.Body.String()
+	expected := fmt.Sprintf(`{"ID":"%s","Name":"Will"}`, UUID0)
+	if expected != strings.TrimSuffix(received, "\n") {
+		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
+	}
+}
+
+// Test that a before update hook is successfully invoked and request is aborted
+func TestUpdateUserHandlerBeforeHookAbortsRequest(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.BeforeUpdate(func(env *env, req updateUserRequest, input *dao.UpdateUserInput) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	// Create a single user
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Update that same user
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/user/%s", UUID0), `{"Name":"Lewis"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that an after update hook is successfully invoked
+func TestUpdateUserHandlerAfterHookSucceeds(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.AfterUpdate(func(env *env, user *dao.User) *HookError {
+		user.Name = "Will"
+		return nil
+	})
+
+	// Create a single user
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Update that same user
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/user/%s", UUID0), `{"Name":"Lewis"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusOK {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+
+	received := res.Body.String()
+	expected := fmt.Sprintf(`{"ID":"%s","Name":"Will"}`, UUID0)
+	if expected != strings.TrimSuffix(received, "\n") {
+		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
+	}
+}
+
+// Test that an after update hook is successfully invoked and request is aborted
+func TestUpdateUserHandlerAfterHookAbortsRequest(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.AfterUpdate(func(env *env, user *dao.User) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	// Create a single user
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Update that same user
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/user/%s", UUID0), `{"Name": "Lewis"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
 // Test that a single user can be successfully created and then deleted
 func TestDeleteUserHandlerSucceeds(t *testing.T) {
 	mockEnv := makeMockEnv()
@@ -480,6 +790,113 @@ func TestDeleteUserHandlerFailsOnDifferentJWT(t *testing.T) {
 	}
 
 	if res.Code != http.StatusUnauthorized {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that a before delete hook is successfully invoked
+func TestDeleteUserHandlerBeforeHookSucceeds(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.BeforeDelete(func(env *env, input *dao.DeleteUserInput) *HookError {
+		input.ID = uuid.Nil
+		return nil
+	})
+
+	// Create a single user
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Delete that same user
+	res, err := makeRequest(mockEnv, http.MethodDelete, fmt.Sprintf("/user/%s", UUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusNotFound {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that a before delete hook is successfully invoked and request is aborted
+func TestDeleteUserHandlerBeforeHookAbortsRequest(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.BeforeDelete(func(env *env, input *dao.DeleteUserInput) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	// Create a single user
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Delete that same user
+	res, err := makeRequest(mockEnv, http.MethodDelete, fmt.Sprintf("/user/%s", UUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that an after delete hook is successfully invoked
+func TestDeleteUserHandlerAfterHookSucceeds(t *testing.T) {
+	mockEnv := makeMockEnv()
+	isHookExecuted := false
+
+	mockEnv.hook.AfterDelete(func(env *env) *HookError {
+		isHookExecuted = true
+		return nil
+	})
+
+	// Create a single user
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Delete that same user
+	res, err := makeRequest(mockEnv, http.MethodDelete, fmt.Sprintf("/user/%s", UUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusOK {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+
+	if !isHookExecuted {
+		t.Errorf("Hook was not executed")
+	}
+}
+
+// Test that an after delete hook is successfully invoked and request is aborted
+func TestDeleteUserHandlerAfterHookAbortsRequest(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.AfterDelete(func(env *env) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	// Create a single user
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Delete that same user
+	res, err := makeRequest(mockEnv, http.MethodDelete, fmt.Sprintf("/user/%s", UUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
 		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }
