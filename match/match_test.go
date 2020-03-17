@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -194,6 +195,118 @@ func TestListMatchHandlerSucceeds(t *testing.T) {
 		matchUUID0, userUUID0, userUUID1, time0, matchUUID1, userUUID0, userUUID2, time0)
 	if expected != strings.TrimSuffix(received, "\n") {
 		t.Errorf("Handler returned incorrect body: received %+v, expected %+v", received, expected)
+	}
+}
+
+// Test that a before list hook is successfully invoked and request is aborted
+func TestListMatchHandlerBeforeHookAbortsRequest(t *testing.T) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		t.Fatalf("Could not parse time: %s", err.Error())
+	}
+
+	// Populate mock datastore
+	matchList := []dao.Match{
+		dao.Match{
+			ID:        uuid.MustParse(matchUUID0),
+			CreatedBy: uuid.MustParse(UUID0),
+			UserOne:   uuid.MustParse(userUUID0),
+			UserTwo:   uuid.MustParse(userUUID1),
+			MatchedOn: time,
+		},
+		dao.Match{
+			ID:        uuid.MustParse(matchUUID1),
+			CreatedBy: uuid.MustParse(UUID0),
+			UserOne:   uuid.MustParse(userUUID0),
+			UserTwo:   uuid.MustParse(userUUID2),
+			MatchedOn: time,
+		},
+		dao.Match{
+			ID:        uuid.MustParse(matchUUID2),
+			CreatedBy: uuid.MustParse(UUID1),
+			UserOne:   uuid.MustParse(userUUID1),
+			UserTwo:   uuid.MustParse(userUUID2),
+			MatchedOn: time,
+		},
+	}
+
+	mockEnv := env{
+		&mockDAO{matchList},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+			uuid.MustParse(userUUID2),
+		}},
+		Hook{},
+	}
+
+	mockEnv.hook.BeforeList(func(env *env, input *dao.ListMatchInput) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	res, err := makeRequest(mockEnv, http.MethodGet, "/match/all", "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that a after list hook is successfully invoked and request is aborted
+func TestListMatchHandlerAfterHookAbortsRequest(t *testing.T) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		t.Fatalf("Could not parse time: %s", err.Error())
+	}
+
+	// Populate mock datastore
+	matchList := []dao.Match{
+		dao.Match{
+			ID:        uuid.MustParse(matchUUID0),
+			CreatedBy: uuid.MustParse(UUID0),
+			UserOne:   uuid.MustParse(userUUID0),
+			UserTwo:   uuid.MustParse(userUUID1),
+			MatchedOn: time,
+		},
+		dao.Match{
+			ID:        uuid.MustParse(matchUUID1),
+			CreatedBy: uuid.MustParse(UUID0),
+			UserOne:   uuid.MustParse(userUUID0),
+			UserTwo:   uuid.MustParse(userUUID2),
+			MatchedOn: time,
+		},
+		dao.Match{
+			ID:        uuid.MustParse(matchUUID2),
+			CreatedBy: uuid.MustParse(UUID1),
+			UserOne:   uuid.MustParse(userUUID1),
+			UserTwo:   uuid.MustParse(userUUID2),
+			MatchedOn: time,
+		},
+	}
+
+	mockEnv := env{
+		&mockDAO{matchList},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+			uuid.MustParse(userUUID2),
+		}},
+		Hook{},
+	}
+
+	mockEnv.hook.AfterList(func(env *env, list *[]dao.Match) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	res, err := makeRequest(mockEnv, http.MethodGet, "/match/all", "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }
 
@@ -731,6 +844,166 @@ func TestUpdateMatchHandlerFailsOnAllInvalidReferences(t *testing.T) {
 	}
 }
 
+// Test that a before update hook is successfully invoked
+func TestUpdateMatchHandlerBeforeHookSucceeds(t *testing.T) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		t.Fatalf("Could not parse time: %s", err.Error())
+	}
+
+	// Populate mock datastore
+	matchList := []dao.Match{dao.Match{
+		ID:        uuid.MustParse(matchUUID0),
+		CreatedBy: uuid.MustParse(UUID0),
+		UserOne:   uuid.MustParse(userUUID0),
+		UserTwo:   uuid.MustParse(userUUID1),
+		MatchedOn: time,
+	}}
+
+	mockEnv := env{
+		&mockDAO{matchList: matchList},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
+		Hook{},
+	}
+
+	mockEnv.hook.BeforeUpdate(func(env *env, req updateMatchRequest, input *dao.UpdateMatchInput) *HookError {
+		input.UserOne = uuid.Nil
+		return nil
+	})
+
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/match/%s", matchUUID0), fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, UUID1, UUID0), JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusBadRequest {
+		t.Fatalf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that a before update hook is successfully invoked and request is aborted
+func TestUpdateMatchHandlerBeforeHookAbortsRequest(t *testing.T) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		t.Fatalf("Could not parse time: %s", err.Error())
+	}
+
+	// Populate mock datastore
+	matchList := []dao.Match{dao.Match{
+		ID:        uuid.MustParse(matchUUID0),
+		CreatedBy: uuid.MustParse(UUID0),
+		UserOne:   uuid.MustParse(userUUID0),
+		UserTwo:   uuid.MustParse(userUUID1),
+		MatchedOn: time,
+	}}
+
+	mockEnv := env{
+		&mockDAO{matchList: matchList},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
+		Hook{},
+	}
+
+	mockEnv.hook.BeforeUpdate(func(env *env, req updateMatchRequest, input *dao.UpdateMatchInput) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/match/%s", matchUUID0), fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, userUUID0, userUUID1), JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Fatalf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that an after update hook is successfully invoked
+func TestUpdateMatchHandlerAfterHookSucceeds(t *testing.T) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		t.Fatalf("Could not parse time: %s", err.Error())
+	}
+
+	// Populate mock datastore
+	matchList := []dao.Match{dao.Match{
+		ID:        uuid.MustParse(matchUUID0),
+		CreatedBy: uuid.MustParse(UUID0),
+		UserOne:   uuid.MustParse(userUUID0),
+		UserTwo:   uuid.MustParse(userUUID1),
+		MatchedOn: time,
+	}}
+
+	mockEnv := env{
+		&mockDAO{matchList: matchList},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
+		Hook{},
+	}
+
+	mockEnv.hook.AfterUpdate(func(env *env, match *dao.Match) *HookError {
+		match.ID = uuid.Nil
+		return nil
+	})
+
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/match/%s", matchUUID0), fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, userUUID0, userUUID1), JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	received := res.Body.String()
+	expected := fmt.Sprintf(`{"ID":"%s","UserOne":"%s","UserTwo":"%s","MatchedOn":"%s"}`, uuid.Nil, userUUID0, userUUID1, time1)
+	if expected != strings.TrimSuffix(received, "\n") {
+		t.Errorf("Handler returned incorrect body: received %+v, expected %+v", received, expected)
+	}
+}
+
+// Test that an after update hook is successfully invoked and request is aborted
+func TestUpdateMatchHandlerAfterHookAbortsRequest(t *testing.T) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		t.Fatalf("Could not parse time: %s", err.Error())
+	}
+
+	// Populate mock datastore
+	matchList := []dao.Match{dao.Match{
+		ID:        uuid.MustParse(matchUUID0),
+		CreatedBy: uuid.MustParse(UUID0),
+		UserOne:   uuid.MustParse(userUUID0),
+		UserTwo:   uuid.MustParse(userUUID1),
+		MatchedOn: time,
+	}}
+
+	mockEnv := env{
+		&mockDAO{matchList: matchList},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
+		Hook{},
+	}
+
+	mockEnv.hook.AfterUpdate(func(env *env, match *dao.Match) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	res, err := makeRequest(mockEnv, http.MethodPut, fmt.Sprintf("/match/%s", matchUUID0), fmt.Sprintf(`{"UserOne": "%s", "UserTwo": "%s"}`, userUUID0, userUUID1), JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Fatalf("Wrong status code: %v", res.Code)
+	}
+}
+
 // Test that a single match can be deleted successfully
 func TestDeleteMatchHandlerSucceeds(t *testing.T) {
 	time, err := time.Parse(time.RFC3339, time0)
@@ -812,6 +1085,172 @@ func TestDeleteMatchHandlerFailsOnNonExistentID(t *testing.T) {
 
 	// Unauthorized, since no match exists with the given ID
 	if res.Code != http.StatusUnauthorized {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that a before delete hook is successfully invoked
+func TestDeleteMatchHandlerBeforeHookSucceeds(t *testing.T) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		t.Fatalf("Could not parse time: %s", err.Error())
+	}
+
+	// Populate mock datastore
+	matchList := []dao.Match{dao.Match{
+		ID:        uuid.MustParse(matchUUID0),
+		CreatedBy: uuid.MustParse(UUID0),
+		UserOne:   uuid.MustParse(userUUID0),
+		UserTwo:   uuid.MustParse(userUUID1),
+		MatchedOn: time,
+	}}
+
+	mockEnv := env{
+		&mockDAO{matchList},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
+		Hook{},
+	}
+
+	mockEnv.hook.BeforeDelete(func(env *env, input *dao.DeleteMatchInput) *HookError {
+		input.ID = uuid.Nil
+		return nil
+	})
+
+	// Delete the match
+	res, err := makeRequest(mockEnv, http.MethodDelete, fmt.Sprintf("/match/%s", matchUUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusNotFound {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that a before delete hook is successfully invoked and request is aborted
+func TestDeleteMatchHandlerBeforeHookAbortsRequest(t *testing.T) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		t.Fatalf("Could not parse time: %s", err.Error())
+	}
+
+	// Populate mock datastore
+	matchList := []dao.Match{dao.Match{
+		ID:        uuid.MustParse(matchUUID0),
+		CreatedBy: uuid.MustParse(UUID0),
+		UserOne:   uuid.MustParse(userUUID0),
+		UserTwo:   uuid.MustParse(userUUID1),
+		MatchedOn: time,
+	}}
+
+	mockEnv := env{
+		&mockDAO{matchList},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
+		Hook{},
+	}
+
+	mockEnv.hook.BeforeDelete(func(env *env, input *dao.DeleteMatchInput) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	// Delete that same user
+	res, err := makeRequest(mockEnv, http.MethodDelete, fmt.Sprintf("/match/%s", matchUUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that an after delete hook is successfully invoked
+func TestDeleteMatchHandlerAfterHookSucceeds(t *testing.T) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		t.Fatalf("Could not parse time: %s", err.Error())
+	}
+
+	// Populate mock datastore
+	matchList := []dao.Match{dao.Match{
+		ID:        uuid.MustParse(matchUUID0),
+		CreatedBy: uuid.MustParse(UUID0),
+		UserOne:   uuid.MustParse(userUUID0),
+		UserTwo:   uuid.MustParse(userUUID1),
+		MatchedOn: time,
+	}}
+
+	mockEnv := env{
+		&mockDAO{matchList},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
+		Hook{},
+	}
+	isHookExecuted := false
+
+	mockEnv.hook.AfterDelete(func(env *env) *HookError {
+		isHookExecuted = true
+		return nil
+	})
+
+	res, err := makeRequest(mockEnv, http.MethodDelete, fmt.Sprintf("/match/%s", matchUUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusOK {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+
+	if !isHookExecuted {
+		t.Errorf("Hook was not executed")
+	}
+}
+
+// Test that an after delete hook is successfully invoked and request is aborted
+func TestDeleteMatchHandlerAfterHookAbortsRequest(t *testing.T) {
+	time, err := time.Parse(time.RFC3339, time0)
+	if err != nil {
+		t.Fatalf("Could not parse time: %s", err.Error())
+	}
+
+	// Populate mock datastore
+	matchList := []dao.Match{dao.Match{
+		ID:        uuid.MustParse(matchUUID0),
+		CreatedBy: uuid.MustParse(UUID0),
+		UserOne:   uuid.MustParse(userUUID0),
+		UserTwo:   uuid.MustParse(userUUID1),
+		MatchedOn: time,
+	}}
+
+	mockEnv := env{
+		&mockDAO{matchList},
+		&mockComm{userIDs: []uuid.UUID{
+			uuid.MustParse(userUUID0),
+			uuid.MustParse(userUUID1),
+		}},
+		Hook{},
+	}
+
+	mockEnv.hook.AfterDelete(func(env *env) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	// Delete that same user
+	res, err := makeRequest(mockEnv, http.MethodDelete, fmt.Sprintf("/match/%s", matchUUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
 		t.Errorf("Wrong status code: %v", res.Code)
 	}
 }
