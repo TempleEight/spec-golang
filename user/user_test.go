@@ -74,7 +74,7 @@ func makeRequest(env env, method string, url string, body string, authToken stri
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+authToken)
-	env.router().ServeHTTP(rec, req)
+	defaultRouter(&env).ServeHTTP(rec, req)
 	return rec, nil
 }
 
