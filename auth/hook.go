@@ -1,4 +1,5 @@
 package main
+
 import "github.com/TempleEight/spec-golang/auth/dao"
 
 // Hook allows additional code to be executed before and after every datastore interaction
@@ -40,4 +41,3 @@ func (h *Hook) AfterCreate(hook func(env *env, auth *dao.Auth, accessToken strin
 func (h *Hook) AfterRead(hook func(env *env, auth *dao.Auth, accessToken string) *HookError) {
 	h.afterReadHooks = append(h.afterReadHooks, &hook)
 }
-
