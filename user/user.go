@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/TempleEight/spec-golang/user/dao"
+	"github.com/TempleEight/spec-golang/user/metric"
 	"github.com/TempleEight/spec-golang/user/util"
 	valid "github.com/asaskevich/govalidator"
 	"github.com/google/uuid"
@@ -105,7 +106,7 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusUnauthorized)
-		requestFailure.WithLabelValues(requestCreate, strconv.Itoa(http.StatusUnauthorized)).Inc()
+		metric.RequestFailure.WithLabelValues(metric.RequestCreate, strconv.Itoa(http.StatusUnauthorized)).Inc()
 		return
 	}
 
@@ -114,7 +115,7 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
-		requestFailure.WithLabelValues(requestCreate, strconv.Itoa(http.StatusBadRequest)).Inc()
+		metric.RequestFailure.WithLabelValues(metric.RequestCreate, strconv.Itoa(http.StatusBadRequest)).Inc()
 		return
 	}
 
@@ -122,7 +123,7 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusBadRequest)
-		requestFailure.WithLabelValues(requestCreate, strconv.Itoa(http.StatusBadRequest)).Inc()
+		metric.RequestFailure.WithLabelValues(metric.RequestCreate, strconv.Itoa(http.StatusBadRequest)).Inc()
 		return
 	}
 
@@ -136,7 +137,7 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			errMsg := util.CreateErrorJSON(err.Error())
 			http.Error(w, errMsg, err.statusCode)
-			requestFailure.WithLabelValues(requestCreate, strconv.Itoa(err.statusCode)).Inc()
+			metric.RequestFailure.WithLabelValues(metric.RequestCreate, strconv.Itoa(err.statusCode)).Inc()
 			return
 		}
 	}
@@ -145,7 +146,7 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
-		requestFailure.WithLabelValues(requestCreate, strconv.Itoa(http.StatusInternalServerError)).Inc()
+		metric.RequestFailure.WithLabelValues(metric.RequestCreate, strconv.Itoa(http.StatusInternalServerError)).Inc()
 		return
 	}
 
@@ -154,7 +155,7 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			errMsg := util.CreateErrorJSON(err.Error())
 			http.Error(w, errMsg, err.statusCode)
-			requestFailure.WithLabelValues(requestCreate, strconv.Itoa(err.statusCode)).Inc()
+			metric.RequestFailure.WithLabelValues(metric.RequestCreate, strconv.Itoa(err.statusCode)).Inc()
 			return
 		}
 	}
@@ -163,7 +164,7 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 		ID:   user.ID,
 		Name: user.Name,
 	})
-	requestSuccess.WithLabelValues(requestCreate).Inc()
+	metric.RequestSuccess.WithLabelValues(metric.RequestCreate).Inc()
 }
 
 func (env *env) readUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -218,7 +219,7 @@ func (env *env) readUserHandler(w http.ResponseWriter, r *http.Request) {
 		ID:   user.ID,
 		Name: user.Name,
 	})
-	requestSuccess.WithLabelValues(requestRead).Inc()
+	metric.RequestSuccess.WithLabelValues(metric.RequestRead).Inc()
 }
 
 func (env *env) updateUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -296,7 +297,7 @@ func (env *env) updateUserHandler(w http.ResponseWriter, r *http.Request) {
 		ID:   user.ID,
 		Name: user.Name,
 	})
-	requestSuccess.WithLabelValues(requestUpdate).Inc()
+	metric.RequestSuccess.WithLabelValues(metric.RequestUpdate).Inc()
 }
 
 func (env *env) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -355,5 +356,5 @@ func (env *env) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(struct{}{})
-	requestSuccess.WithLabelValues(requestDelete).Inc()
+	metric.RequestSuccess.WithLabelValues(metric.RequestDelete).Inc()
 }
