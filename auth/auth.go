@@ -24,6 +24,7 @@ type env struct {
 	dao           dao.Datastore
 	comm          comm.Comm
 	jwtCredential *comm.JWTCredential
+	hook          Hook
 }
 
 // registerAuthRequest contains the client-provided information required to create a single auth
@@ -80,7 +81,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	env := env{d, c, jwtCredential}
+	env := env{d, c, jwtCredential, Hook{}}
 
 	log.Fatal(http.ListenAndServe(":82", env.router()))
 }
@@ -124,11 +125,22 @@ func (env *env) registerAuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	auth, err := env.dao.CreateAuth(dao.CreateAuthInput{
+	input := dao.CreateAuthInput{
 		ID:       uuid,
 		Email:    req.Email,
 		Password: string(hashedPassword),
-	})
+	}
+
+	for _, hook := range env.hook.beforeCreateHooks {
+		err := (*hook)(env, req, &input)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
+	}
+
+	auth, err := env.dao.CreateAuth(input)
 	if err != nil {
 		switch err {
 		case dao.ErrDuplicateAuth:
@@ -145,6 +157,15 @@ func (env *env) registerAuthHandler(w http.ResponseWriter, r *http.Request) {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not create access token: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
+	}
+
+	for _, hook := range env.hook.afterCreateHooks {
+		err := (*hook)(env, auth, accessToken)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(registerAuthResponse{
@@ -168,9 +189,20 @@ func (env *env) loginAuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	auth, err := env.dao.ReadAuth(dao.ReadAuthInput{
+	input := dao.ReadAuthInput{
 		Email: req.Email,
-	})
+	}
+
+	for _, hook := range env.hook.beforeReadHooks {
+		err := (*hook)(env, req, &input)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
+	}
+
+	auth, err := env.dao.ReadAuth(input)
 	if err != nil {
 		switch err {
 		case dao.ErrAuthNotFound:
@@ -195,6 +227,15 @@ func (env *env) loginAuthHandler(w http.ResponseWriter, r *http.Request) {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not create access token: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
+	}
+
+	for _, hook := range env.hook.afterReadHooks {
+		err := (*hook)(env, auth, accessToken)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(loginAuthResponse{
