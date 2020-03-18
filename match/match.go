@@ -131,13 +131,33 @@ func (env *env) listMatchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	matchList, err := env.dao.ListMatch(dao.ListMatchInput{
+	input := dao.ListMatchInput{
 		AuthID: auth.ID,
-	})
+	}
+
+	for _, hook := range env.hook.beforeListHooks {
+		err := (*hook)(env, &input)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
+	}
+
+	matchList, err := env.dao.ListMatch(input)
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
+	}
+
+	for _, hook := range env.hook.afterListHooks {
+		err := (*hook)(env, matchList)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
 	}
 
 	matchListResp := listMatchResponse{
@@ -411,11 +431,22 @@ func (env *env) updateMatchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	match, err := env.dao.UpdateMatch(dao.UpdateMatchInput{
+	input := dao.UpdateMatchInput{
 		ID:      matchID,
 		UserOne: *req.UserOne,
 		UserTwo: *req.UserTwo,
-	})
+	}
+
+	for _, hook := range env.hook.beforeUpdateHooks {
+		err := (*hook)(env, req, &input)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
+	}
+
+	match, err := env.dao.UpdateMatch(input)
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrMatchNotFound:
@@ -425,6 +456,15 @@ func (env *env) updateMatchHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, errMsg, http.StatusInternalServerError)
 		}
 		return
+	}
+
+	for _, hook := range env.hook.afterUpdateHooks {
+		err := (*hook)(env, match)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(updateMatchResponse{
@@ -468,9 +508,20 @@ func (env *env) deleteMatchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = env.dao.DeleteMatch(dao.DeleteMatchInput{
+	input := dao.DeleteMatchInput{
 		ID: matchID,
-	})
+	}
+
+	for _, hook := range env.hook.beforeDeleteHooks {
+		err := (*hook)(env, &input)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
+	}
+
+	err = env.dao.DeleteMatch(input)
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrMatchNotFound:
@@ -480,6 +531,15 @@ func (env *env) deleteMatchHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, errMsg, http.StatusInternalServerError)
 		}
 		return
+	}
+
+	for _, hook := range env.hook.afterDeleteHooks {
+		err := (*hook)(env)
+		if err != nil {
+			errMsg := util.CreateErrorJSON(err.Error())
+			http.Error(w, errMsg, err.statusCode)
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(struct{}{})
