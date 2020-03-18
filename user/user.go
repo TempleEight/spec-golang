@@ -12,6 +12,7 @@ import (
 	valid "github.com/asaskevich/govalidator"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // env defines the environment that requests should be executed within
@@ -60,6 +61,12 @@ func defaultRouter(env *env) *mux.Router {
 }
 
 func main() {
+	// Prometheus metrics
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		http.ListenAndServe(":2112", nil)
+	}()
+
 	configPtr := flag.String("config", "/etc/user-service/config.json", "configuration filepath")
 	flag.Parse()
 
