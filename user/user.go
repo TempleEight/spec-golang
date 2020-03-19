@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/TempleEight/spec-golang/user/dao"
 	"github.com/TempleEight/spec-golang/user/metric"
 	"github.com/TempleEight/spec-golang/user/util"
@@ -142,7 +144,10 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestCreate))
 	user, err := env.dao.CreateUser(input)
+	timer.ObserveDuration()
+
 	if err != nil {
 		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
 		http.Error(w, errMsg, http.StatusInternalServerError)
@@ -194,7 +199,10 @@ func (env *env) readUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestRead))
 	user, err := env.dao.ReadUser(input)
+	timer.ObserveDuration()
+
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrUserNotFound:
@@ -272,7 +280,10 @@ func (env *env) updateUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestUpdate))
 	user, err := env.dao.UpdateUser(input)
+	timer.ObserveDuration()
+
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrUserNotFound:
@@ -334,7 +345,10 @@ func (env *env) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestDelete))
 	err = env.dao.DeleteUser(input)
+	timer.ObserveDuration()
+
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrUserNotFound:
