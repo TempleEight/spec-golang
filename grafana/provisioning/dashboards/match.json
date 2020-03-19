@@ -15,7 +15,7 @@
     "editable": true,
     "gnetId": null,
     "graphTooltip": 0,
-    "id": 2,
+    "id": 1,
     "links": [],
     "panels": [
         {
@@ -31,6 +31,205 @@
                 "w": 12,
                 "x": 0,
                 "y": 0
+            },
+            "hiddenSeries": false,
+            "id": 11,
+            "legend": {
+                "alignAsTable": false,
+                "avg": false,
+                "current": false,
+                "hideEmpty": false,
+                "max": false,
+                "min": false,
+                "rightSide": true,
+                "show": true,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "options": {
+                "dataLinks": []
+            },
+            "percentage": false,
+            "pointradius": 2,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "rate(match_request_success_total{request_type=\"list\"}[5m])",
+                    "legendFormat": "Success",
+                    "refId": "A"
+                },
+                {
+                    "expr": "rate(match_request_failure_total{request_type=\"list\"}[5m])",
+                    "format": "time_series",
+                    "legendFormat": "{{error_code}}",
+                    "refId": "B"
+                }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "List Match Requests",
+            "tooltip": {
+                "shared": true,
+                "sort": 0,
+                "value_type": "individual"
+            },
+            "type": "graph",
+            "xaxis": {
+                "buckets": null,
+                "mode": "time",
+                "name": null,
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "short",
+                    "label": "QPS",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "label": null,
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false,
+                "alignLevel": null
+            }
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": null,
+            "fill": 1,
+            "fillGradient": 0,
+            "gridPos": {
+                "h": 5,
+                "w": 12,
+                "x": 12,
+                "y": 0
+            },
+            "hiddenSeries": false,
+            "id": 7,
+            "legend": {
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "rightSide": true,
+                "show": true,
+                "total": false,
+                "values": false
+            },
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "options": {
+                "dataLinks": []
+            },
+            "percentage": false,
+            "pointradius": 2,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "expr": "match_database_request_seconds{quantile=\"0.5\",query_type=\"list\"}",
+                    "legendFormat": "50th Percentile",
+                    "refId": "A"
+                },
+                {
+                    "expr": "match_database_request_seconds{quantile=\"0.9\",query_type=\"list\"}",
+                    "legendFormat": "90th Percentile",
+                    "refId": "B"
+                },
+                {
+                    "expr": "match_database_request_seconds{quantile=\"0.95\",query_type=\"list\"}",
+                    "legendFormat": "95th Percentile",
+                    "refId": "C"
+                },
+                {
+                    "expr": "match_database_request_seconds{quantile=\"0.99\",query_type=\"list\"}",
+                    "legendFormat": "99th Percentile",
+                    "refId": "D"
+                }
+            ],
+            "thresholds": [],
+            "timeFrom": null,
+            "timeRegions": [],
+            "timeShift": null,
+            "title": "DB List Queries",
+            "tooltip": {
+                "shared": true,
+                "sort": 0,
+                "value_type": "individual"
+            },
+            "type": "graph",
+            "xaxis": {
+                "buckets": null,
+                "mode": "time",
+                "name": null,
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "format": "short",
+                    "label": "Time (seconds)",
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                },
+                {
+                    "format": "short",
+                    "label": null,
+                    "logBase": 1,
+                    "max": null,
+                    "min": null,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false,
+                "alignLevel": null
+            }
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "Prometheus",
+            "fill": 1,
+            "fillGradient": 0,
+            "gridPos": {
+                "h": 5,
+                "w": 12,
+                "x": 0,
+                "y": 5
             },
             "hiddenSeries": false,
             "id": 2,
@@ -126,10 +325,10 @@
                 "h": 5,
                 "w": 12,
                 "x": 12,
-                "y": 0
+                "y": 5
             },
             "hiddenSeries": false,
-            "id": 7,
+            "id": 12,
             "legend": {
                 "avg": false,
                 "current": false,
@@ -229,7 +428,7 @@
                 "h": 5,
                 "w": 12,
                 "x": 0,
-                "y": 5
+                "y": 10
             },
             "hiddenSeries": false,
             "id": 3,
@@ -325,7 +524,7 @@
                 "h": 5,
                 "w": 12,
                 "x": 12,
-                "y": 5
+                "y": 10
             },
             "hiddenSeries": false,
             "id": 10,
@@ -428,7 +627,7 @@
                 "h": 5,
                 "w": 12,
                 "x": 0,
-                "y": 10
+                "y": 15
             },
             "hiddenSeries": false,
             "id": 5,
@@ -524,7 +723,7 @@
                 "h": 5,
                 "w": 12,
                 "x": 12,
-                "y": 10
+                "y": 15
             },
             "hiddenSeries": false,
             "id": 9,
@@ -627,7 +826,7 @@
                 "h": 5,
                 "w": 12,
                 "x": 0,
-                "y": 15
+                "y": 20
             },
             "hiddenSeries": false,
             "id": 4,
@@ -723,7 +922,7 @@
                 "h": 5,
                 "w": 12,
                 "x": 12,
-                "y": 15
+                "y": 20
             },
             "hiddenSeries": false,
             "id": 8,
