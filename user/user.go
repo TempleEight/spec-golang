@@ -14,6 +14,7 @@ import (
 	valid "github.com/asaskevich/govalidator"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -141,7 +142,10 @@ func (env *env) createUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestCreate))
 	user, err := env.dao.CreateUser(input)
+	timer.ObserveDuration()
+
 	if err != nil {
 		respondWithError(w, fmt.Sprintf("Something went wrong: %s", err.Error()), http.StatusInternalServerError, metric.RequestCreate)
 		return
@@ -187,7 +191,10 @@ func (env *env) readUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestRead))
 	user, err := env.dao.ReadUser(input)
+	timer.ObserveDuration()
+
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrUserNotFound:
@@ -258,7 +265,10 @@ func (env *env) updateUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestUpdate))
 	user, err := env.dao.UpdateUser(input)
+	timer.ObserveDuration()
+
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrUserNotFound:
@@ -315,7 +325,10 @@ func (env *env) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestDelete))
 	err = env.dao.DeleteUser(input)
+	timer.ObserveDuration()
+
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrUserNotFound:
