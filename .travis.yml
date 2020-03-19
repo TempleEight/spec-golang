@@ -2,6 +2,12 @@ sudo: required
 
 language: go
 
-script: 
-# Run unit and integration tests
-- for svc in user auth match; do cd $svc && docker-compose up --build $svc && cd ..; done
+jobs:
+  include:
+  - stage: test
+    name: tests
+    # Run unit and integration tests
+    script: for svc in user auth match; do cd $svc && docker-compose up --build $svc && cd ..; done
+  - stage: deploy
+    if: branch = master
+    script: sh push-image.sh
