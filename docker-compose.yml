@@ -22,7 +22,8 @@ services:
   match:
     build: ./match
     ports:
-      - "81:81" 
+      - "81:81"
+      - "2113:2113"
     networks: 
       - match-network
       - kong-network
@@ -136,6 +137,7 @@ services:
     networks:
       - metrics-network
       - user-network
+      - match-network
     volumes:
       - ./prometheus:/etc/prometheus
 
