@@ -7,7 +7,7 @@ jobs:
   - stage: test
     name: tests
     # Run unit and integration tests
-    script: for svc in user auth match; do cd $svc && docker-compose up --build $svc && cd ..; done
+    script: for svc in user auth match; do cd $svc && docker-compose up --build $svc && cd ..
   - stage: deploy
     if: branch = master
     script: sh push-image.sh
