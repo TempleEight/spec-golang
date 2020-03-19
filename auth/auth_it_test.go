@@ -35,7 +35,7 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 
-	environment = env{d, c, jwtCredential}
+	environment = env{d, c, jwtCredential, Hook{}}
 
 	os.Exit(m.Run())
 }
