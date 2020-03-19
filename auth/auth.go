@@ -8,12 +8,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/TempleEight/spec-golang/auth/metric"
-
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/TempleEight/spec-golang/auth/comm"
 	"github.com/TempleEight/spec-golang/auth/dao"
+	"github.com/TempleEight/spec-golang/auth/metric"
 	"github.com/TempleEight/spec-golang/auth/util"
 	valid "github.com/asaskevich/govalidator"
 	"github.com/dgrijalva/jwt-go"
