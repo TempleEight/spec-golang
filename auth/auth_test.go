@@ -64,7 +64,7 @@ func makeRequest(env env, method string, url string, body string) (*httptest.Res
 		return nil, err
 	}
 
-	env.router().ServeHTTP(rec, req)
+	defaultRouter(&env).ServeHTTP(rec, req)
 	return rec, nil
 }
 
