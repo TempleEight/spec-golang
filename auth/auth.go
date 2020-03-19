@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/TempleEight/spec-golang/auth/metric"
+
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/TempleEight/spec-golang/auth/comm"
@@ -58,6 +60,12 @@ func defaultRouter(env *env) *mux.Router {
 	return r
 }
 
+// respondWithError responds to a HTTP request with a JSON error response
+func respondWithError(w http.ResponseWriter, err string, statusCode int, requestType string) {
+	w.WriteHeader(statusCode)
+	fmt.Fprintln(w, util.CreateErrorJSON(err))
+}
+
 func main() {
 	configPtr := flag.String("config", "/etc/auth-service/config.json", "configuration filepath")
 	flag.Parse()
@@ -102,30 +110,26 @@ func (env *env) registerAuthHandler(w http.ResponseWriter, r *http.Request) {
 	var req registerAuthRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		respondWithError(w, fmt.Sprintf("Invalid request parameters: %s", err.Error()), http.StatusBadRequest, metric.RequestRegister)
 		return
 	}
 
 	_, err = valid.ValidateStruct(req)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		respondWithError(w, fmt.Sprintf("Invalid request parameters: %s", err.Error()), http.StatusBadRequest, metric.RequestRegister)
 		return
 	}
 
 	// Hash and salt the password before storing
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not hash password: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
+		respondWithError(w, fmt.Sprintf("Could not hash password: %s", err.Error()), http.StatusInternalServerError, metric.RequestRegister)
 		return
 	}
 
 	uuid, err := uuid.NewUUID()
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not create UUID: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
+		respondWithError(w, fmt.Sprintf("Could not create UUID: %s", err.Error()), http.StatusInternalServerError, metric.RequestRegister)
 		return
 	}
 
@@ -138,8 +142,7 @@ func (env *env) registerAuthHandler(w http.ResponseWriter, r *http.Request) {
 	for _, hook := range env.hook.beforeCreateHooks {
 		err := (*hook)(env, req, &input)
 		if err != nil {
-			errMsg := util.CreateErrorJSON(err.Error())
-			http.Error(w, errMsg, err.statusCode)
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestRegister)
 			return
 		}
 	}
@@ -148,26 +151,23 @@ func (env *env) registerAuthHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err {
 		case dao.ErrDuplicateAuth:
-			http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusForbidden)
+			respondWithError(w, err.Error(), http.StatusForbidden, metric.RequestRegister)
 		default:
-			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-			http.Error(w, errMsg, http.StatusInternalServerError)
+			respondWithError(w, fmt.Sprintf("Something went wrong: %s", err.Error()), http.StatusInternalServerError, metric.RequestRegister)
 		}
 		return
 	}
 
 	accessToken, err := createToken(auth.ID, env.jwtCredential.Key, env.jwtCredential.Secret)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not create access token: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
+		respondWithError(w, fmt.Sprintf("Could not create access token: %s", err.Error()), http.StatusInternalServerError, metric.RequestRegister)
 		return
 	}
 
 	for _, hook := range env.hook.afterCreateHooks {
 		err := (*hook)(env, auth, accessToken)
 		if err != nil {
-			errMsg := util.CreateErrorJSON(err.Error())
-			http.Error(w, errMsg, err.statusCode)
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestRegister)
 			return
 		}
 	}
@@ -181,15 +181,13 @@ func (env *env) loginAuthHandler(w http.ResponseWriter, r *http.Request) {
 	var req loginAuthRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		respondWithError(w, fmt.Sprintf("Invalid request parameters: %s", err.Error()), http.StatusBadRequest, metric.RequestLogin)
 		return
 	}
 
 	_, err = valid.ValidateStruct(req)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		respondWithError(w, fmt.Sprintf("Invalid request parameters: %s", err.Error()), http.StatusBadRequest, metric.RequestLogin)
 		return
 	}
 
@@ -200,8 +198,7 @@ func (env *env) loginAuthHandler(w http.ResponseWriter, r *http.Request) {
 	for _, hook := range env.hook.beforeReadHooks {
 		err := (*hook)(env, req, &input)
 		if err != nil {
-			errMsg := util.CreateErrorJSON(err.Error())
-			http.Error(w, errMsg, err.statusCode)
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestLogin)
 			return
 		}
 	}
@@ -210,34 +207,29 @@ func (env *env) loginAuthHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err {
 		case dao.ErrAuthNotFound:
-			errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid email or password"))
-			http.Error(w, errMsg, http.StatusUnauthorized)
+			respondWithError(w, fmt.Sprintf("Invalid email or password"), http.StatusUnauthorized, metric.RequestLogin)
 		default:
-			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-			http.Error(w, errMsg, http.StatusInternalServerError)
+			respondWithError(w, fmt.Sprintf("Something went wrong: %s", err.Error()), http.StatusInternalServerError, metric.RequestLogin)
 		}
 		return
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(auth.Password), []byte(req.Password))
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid email or password"))
-		http.Error(w, errMsg, http.StatusUnauthorized)
+		respondWithError(w, fmt.Sprintf("Invalid email or password"), http.StatusUnauthorized, metric.RequestLogin)
 		return
 	}
 
 	accessToken, err := createToken(auth.ID, env.jwtCredential.Key, env.jwtCredential.Secret)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not create access token: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
+		respondWithError(w, fmt.Sprintf("Could not create access token: %s", err.Error()), http.StatusInternalServerError, metric.RequestLogin)
 		return
 	}
 
 	for _, hook := range env.hook.afterReadHooks {
 		err := (*hook)(env, auth, accessToken)
 		if err != nil {
-			errMsg := util.CreateErrorJSON(err.Error())
-			http.Error(w, errMsg, err.statusCode)
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestLogin)
 			return
 		}
 	}
