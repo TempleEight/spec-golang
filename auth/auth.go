@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -18,6 +19,8 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // env defines the environment that requests should be executed within
@@ -63,9 +66,16 @@ func defaultRouter(env *env) *mux.Router {
 func respondWithError(w http.ResponseWriter, err string, statusCode int, requestType string) {
 	w.WriteHeader(statusCode)
 	fmt.Fprintln(w, util.CreateErrorJSON(err))
+	metric.RequestFailure.WithLabelValues(requestType, strconv.Itoa(statusCode)).Inc()
 }
 
 func main() {
+	// Prometheus metrics
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		http.ListenAndServe(":2114", nil)
+	}()
+
 	configPtr := flag.String("config", "/etc/auth-service/config.json", "configuration filepath")
 	flag.Parse()
 
@@ -146,7 +156,9 @@ func (env *env) registerAuthHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestRegister))
 	auth, err := env.dao.CreateAuth(input)
+	timer.ObserveDuration()
 	if err != nil {
 		switch err {
 		case dao.ErrDuplicateAuth:
@@ -174,6 +186,7 @@ func (env *env) registerAuthHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(registerAuthResponse{
 		AccessToken: accessToken,
 	})
+	metric.RequestSuccess.WithLabelValues(metric.RequestRegister).Inc()
 }
 
 func (env *env) loginAuthHandler(w http.ResponseWriter, r *http.Request) {
@@ -202,7 +215,9 @@ func (env *env) loginAuthHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestLogin))
 	auth, err := env.dao.ReadAuth(input)
+	timer.ObserveDuration()
 	if err != nil {
 		switch err {
 		case dao.ErrAuthNotFound:
@@ -236,6 +251,7 @@ func (env *env) loginAuthHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(loginAuthResponse{
 		AccessToken: accessToken,
 	})
+	metric.RequestSuccess.WithLabelValues(metric.RequestLogin).Inc()
 }
 
 // Create an access token with a 24 hour lifetime
