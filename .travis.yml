@@ -11,3 +11,4 @@ jobs:
   - stage: deploy
     if: branch = master
     script: sh push-image.sh
+
