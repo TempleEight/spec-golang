@@ -5,8 +5,9 @@ if [[ -z "${DOCKER_USERNAME}" ]] || [[ -z "${DOCKER_PASSWORD}" ]]; then
   exit 1
 fi
 
+REGISTRY_URL="registry.lewiky.com"
 
 for service in "user" "auth" "match"; do
-  docker build -t "registry.lewiky.com/temple-$service-service" $service
-  docker push "registry.lewiky.com/temple-$service-service"
+  docker build -t "$REGISTRY_URL/temple-$service-service" $service
+  docker push "$REGISTRY_URL/temple-$service-service"
 done

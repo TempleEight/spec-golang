@@ -4,10 +4,15 @@ language: go
 
 jobs:
   include:
-  - stage: test
-    name: tests
-    # Run unit and integration tests
-    script: for svc in user auth match; do cd $svc && docker-compose up --build $svc && cd ..; done
+  - stage: test-user
+    name: User service tests
+    script: cd user && docker-compose up --build user && cd ..
+  - stage: test-auth
+    name: Auth service tests
+    script: cd auth && docker-compose up --build auth && cd ..
+  - stage: test-match
+    name: Match service tests
+    script: cd match && docker-compose up --build match && cd ..
   - stage: deploy
     if: branch = master
     script: sh push-image.sh
