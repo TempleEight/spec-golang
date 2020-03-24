@@ -2,5 +2,9 @@
   "user": "postgres",
   "dbName": "postgres",
   "host": "user-db",
-  "sslMode": "disable"
+  "sslMode": "disable",
+  "ports": {
+    "service": 80,
+    "prometheus": 2112
+  }
 }
