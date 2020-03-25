@@ -89,12 +89,6 @@ func respondWithError(w http.ResponseWriter, err string, statusCode int, request
 }
 
 func main() {
-	// Prometheus metrics
-	go func() {
-		http.Handle("/metrics", promhttp.Handler())
-		http.ListenAndServe(":2113", nil)
-	}()
-
 	configPtr := flag.String("config", "/etc/match-service/config.json", "configuration filepath")
 	flag.Parse()
 
@@ -105,6 +99,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Prometheus metrics
+	promPort, ok := config.Ports["prometheus"]
+	if !ok {
+		log.Fatal("A port for the key prometheus was not found")
+	}
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		http.ListenAndServe(fmt.Sprintf(":%d", promPort), nil)
+	}()
 
 	d, err := dao.Init(config)
 	if err != nil {
@@ -118,7 +122,11 @@ func main() {
 	router := defaultRouter(&env)
 	env.setup(router)
 
-	log.Fatal(http.ListenAndServe(":81", router))
+	servicePort, ok := config.Ports["service"]
+	if !ok {
+		log.Fatal("A port for the key service was not found")
+	}
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", servicePort), router))
 }
 
 func jsonMiddleware(next http.Handler) http.Handler {
