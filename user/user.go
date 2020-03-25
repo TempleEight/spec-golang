@@ -85,7 +85,7 @@ func main() {
 	// Prometheus metrics
 	promPort, ok := config.Ports["prometheus"]
 	if !ok {
-		log.Fatal(err)
+		log.Fatal("A port for the key prometheus was not found")
 	}
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
@@ -104,7 +104,7 @@ func main() {
 
 	servicePort, ok := config.Ports["service"]
 	if !ok {
-		log.Fatal(err)
+		log.Fatal("A port for the key service was not found")
 	}
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", servicePort), router))
 }
