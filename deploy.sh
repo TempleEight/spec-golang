@@ -14,11 +14,11 @@ minikube start --vm-driver=virtualbox
 echo $GREEN
 
 kubectl create secret docker-registry regcred --docker-server=$REG_URL --docker-username=$REG_USERNAME --docker-password=$REG_PASSWORD --docker-email=$REG_EMAIL
-kubectl create configmap match-db-config --from-file $BASEDIR/match-db/init.sql -o=yaml
-kubectl create configmap user-db-config --from-file $BASEDIR/user-db/init.sql -o=yaml
-kubectl create configmap auth-db-config --from-file $BASEDIR/auth-db/init.sql -o=yaml
+kubectl create configmap match-db-config --from-file "$BASEDIR/match-db/init.sql" -o=yaml
+kubectl create configmap user-db-config --from-file "$BASEDIR/user-db/init.sql" -o=yaml
+kubectl create configmap auth-db-config --from-file "$BASEDIR/auth-db/init.sql" -o=yaml
 
-for dir in $BASEDIR/kube/*
+for dir in "$BASEDIR/kube/"*
 do
   kubectl create -f $dir
 done
@@ -52,7 +52,7 @@ echo Configuring Kong...
 
 sleep 1
 
-sh $BASEDIR/kong/configure-kong-k8s.sh
+sh "$BASEDIR/kong/configure-kong-k8s.sh"
 
 echo $PURPLE
 
