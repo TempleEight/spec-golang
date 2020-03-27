@@ -1,7 +1,7 @@
 #! /bin/sh
 # Deployment script for kube - generates configmaps from SQL init files and provisions everything
 
-BASEDIR=$(dirname "$0")
+BASEDIR=$(dirname "$BASH_SOURCE")
 
 GREEN="\033[1;32m"
 BLUE="\033[1;34m"
