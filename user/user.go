@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -34,6 +35,11 @@ type updateUserRequest struct {
 	Name string `valid:"type(string),required,stringlength(2|255)"`
 }
 
+// createPictureRequest contains the client-provided information required to create a single picture
+type createPictureRequest struct {
+	Img string `valid:"-"`
+}
+
 // createUserResponse contains a newly created user to be returned to the client
 type createUserResponse struct {
 	ID   uuid.UUID
@@ -52,6 +58,11 @@ type updateUserResponse struct {
 	Name string
 }
 
+// createPictureResponse contains a newly created picture to be returned to the client
+type createPictureResponse struct {
+	ID uuid.UUID
+}
+
 // router generates a router for this service
 func defaultRouter(env *env) *mux.Router {
 	r := mux.NewRouter()
@@ -59,6 +70,7 @@ func defaultRouter(env *env) *mux.Router {
 	r.HandleFunc("/user/{id}", env.readUserHandler).Methods(http.MethodGet)
 	r.HandleFunc("/user/{id}", env.updateUserHandler).Methods(http.MethodPut)
 	r.HandleFunc("/user/{id}", env.deleteUserHandler).Methods(http.MethodDelete)
+	r.HandleFunc("/user/{id}/picture", env.createUserPictureHandler).Methods(http.MethodPost)
 	r.Use(jsonMiddleware)
 	return r
 }
@@ -357,4 +369,90 @@ func (env *env) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(struct{}{})
 	metric.RequestSuccess.WithLabelValues(metric.RequestDelete).Inc()
+}
+
+func (env *env) createUserPictureHandler(w http.ResponseWriter, r *http.Request) {
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
+	if err != nil {
+		respondWithError(w, fmt.Sprintf("Could not authorize request: %s", err.Error()), http.StatusUnauthorized, metric.RequestCreatePicture)
+		return
+	}
+
+	userID, err := util.ExtractIDFromRequest(mux.Vars(r))
+	if err != nil {
+		respondWithError(w, err.Error(), http.StatusBadRequest, metric.RequestCreatePicture)
+		return
+	}
+
+	// Only the auth that created the user can create a single picture
+	if auth.ID != userID {
+		respondWithError(w, "Not authorized to make request", http.StatusUnauthorized, metric.RequestCreatePicture)
+		return
+	}
+
+	var req createPictureRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		respondWithError(w, fmt.Sprintf("Invalid request parameters: %s", err.Error()), http.StatusBadRequest, metric.RequestCreatePicture)
+		return
+	}
+
+	_, err = valid.ValidateStruct(req)
+	if err != nil {
+		respondWithError(w, fmt.Sprintf("Invalid request parameters: %s", err.Error()), http.StatusBadRequest, metric.RequestCreatePicture)
+		return
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(req.Img)
+	if err != nil {
+		respondWithError(w, fmt.Sprintf("Invalid request parameters: %s", err.Error()), http.StatusBadRequest, metric.RequestCreatePicture)
+		return
+	}
+
+	uuid, err := uuid.NewUUID()
+	if err != nil {
+		respondWithError(w, fmt.Sprintf("Could not create UUID: %s", err.Error()), http.StatusInternalServerError, metric.RequestCreatePicture)
+		return
+	}
+
+	input := dao.CreatePictureInput{
+		ID:     uuid,
+		UserID: auth.ID,
+		Img:    decoded,
+	}
+
+	for _, hook := range env.hook.beforeCreatePictureHooks {
+		err := (*hook)(env, req, &input)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestCreatePicture)
+			return
+		}
+	}
+
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestCreatePicture))
+	picture, err := env.dao.CreatePicture(input)
+	timer.ObserveDuration()
+
+	if err != nil {
+		switch err.(type) {
+		case dao.ErrUserNotFound:
+			respondWithError(w, err.Error(), http.StatusNotFound, metric.RequestCreatePicture)
+		default:
+			respondWithError(w, fmt.Sprintf("Something went wrong: %s", err.Error()), http.StatusInternalServerError, metric.RequestCreatePicture)
+		}
+		return
+	}
+
+	for _, hook := range env.hook.afterCreatePictureHooks {
+		err := (*hook)(env, picture)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestCreatePicture)
+			return
+		}
+	}
+
+	json.NewEncoder(w).Encode(createPictureResponse{
+		ID: picture.ID,
+	})
+	metric.RequestSuccess.WithLabelValues(metric.RequestCreatePicture).Inc()
 }

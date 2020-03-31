@@ -5,15 +5,17 @@ import "github.com/TempleEight/spec-golang/user/dao"
 // Hook allows additional code to be executed before and after every datastore interaction
 // Hooks are executed in the order they are defined, such that if any hook errors, future hooks are not executed and the request is terminated
 type Hook struct {
-	beforeCreateHooks []*func(env *env, req createUserRequest, input *dao.CreateUserInput) *HookError
-	beforeReadHooks   []*func(env *env, input *dao.ReadUserInput) *HookError
-	beforeUpdateHooks []*func(env *env, req updateUserRequest, input *dao.UpdateUserInput) *HookError
-	beforeDeleteHooks []*func(env *env, input *dao.DeleteUserInput) *HookError
+	beforeCreateHooks        []*func(env *env, req createUserRequest, input *dao.CreateUserInput) *HookError
+	beforeReadHooks          []*func(env *env, input *dao.ReadUserInput) *HookError
+	beforeUpdateHooks        []*func(env *env, req updateUserRequest, input *dao.UpdateUserInput) *HookError
+	beforeDeleteHooks        []*func(env *env, input *dao.DeleteUserInput) *HookError
+	beforeCreatePictureHooks []*func(env *env, req createPictureRequest, input *dao.CreatePictureInput) *HookError
 
-	afterCreateHooks []*func(env *env, user *dao.User) *HookError
-	afterReadHooks   []*func(env *env, user *dao.User) *HookError
-	afterUpdateHooks []*func(env *env, user *dao.User) *HookError
-	afterDeleteHooks []*func(env *env) *HookError
+	afterCreateHooks        []*func(env *env, user *dao.User) *HookError
+	afterReadHooks          []*func(env *env, user *dao.User) *HookError
+	afterUpdateHooks        []*func(env *env, user *dao.User) *HookError
+	afterDeleteHooks        []*func(env *env) *HookError
+	afterCreatePictureHooks []*func(env *env, picture *dao.Picture) *HookError
 }
 
 // HookError wraps an existing error with HTTP status code
@@ -46,6 +48,11 @@ func (h *Hook) BeforeDelete(hook func(env *env, input *dao.DeleteUserInput) *Hoo
 	h.beforeDeleteHooks = append(h.beforeDeleteHooks, &hook)
 }
 
+// BeforeCreate adds a new hook to be executed before creating an object in the datastore
+func (h *Hook) BeforeCreatePicture(hook func(env *env, req createPictureRequest, input *dao.CreatePictureInput) *HookError) {
+	h.beforeCreatePictureHooks = append(h.beforeCreatePictureHooks, &hook)
+}
+
 // AfterCreate adds a new hook to be executed after creating an object in the datastore
 func (h *Hook) AfterCreate(hook func(env *env, user *dao.User) *HookError) {
 	h.afterCreateHooks = append(h.afterCreateHooks, &hook)
@@ -64,4 +71,9 @@ func (h *Hook) AfterUpdate(hook func(env *env, user *dao.User) *HookError) {
 // AfterDelete adds a new hook to be executed after deleting an object in the datastore
 func (h *Hook) AfterDelete(hook func(env *env) *HookError) {
 	h.afterDeleteHooks = append(h.afterDeleteHooks, &hook)
+}
+
+// AfterCreatePicture adds a new hook to be executed after creating an object in the datastore
+func (h *Hook) AfterCreatePicture(hook func(env *env, user *dao.Picture) *HookError) {
+	h.afterCreatePictureHooks = append(h.afterCreatePictureHooks, &hook)
 }
