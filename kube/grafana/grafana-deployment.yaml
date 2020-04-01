@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: grafana
+  name: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+      name: grafana
+    spec:
+      hostname: grafana
+      containers:
+      - image: grafana/grafana:6.6.2
+        name: grafana
+        ports:
+        - containerPort: 3000
+        volumeMounts:
+        - mountPath: /etc/grafana/provisioning/datasources/datasource.yml
+          subPath: datasource.yml
+          name: grafana-datasource
+        - mountPath: /etc/grafana/provisioning/dashboards/dashboards.yml
+          subPath: dashboards.yml
+          name: grafana-dashboards
+        - mountPath: /etc/grafana/provisioning/dashboards/user.json
+          subPath: user.json
+          name: grafana-user
+        - mountPath: /etc/grafana/provisioning/dashboards/auth.json
+          subPath: auth.json
+          name: grafana-auth
+        - mountPath: /etc/grafana/provisioning/dashboards/match.json
+          subPath: match.json
+          name: grafana-match
+      restartPolicy: Always
+      volumes:
+      - name: grafana-datasource
+        configMap:
+          name: grafana-datasource-config
+      - name: grafana-dashboards
+        configMap:
+          name: grafana-dashboards-config
+      - name: grafana-auth
+        configMap:
+          name: grafana-auth-config
+      - name: grafana-user
+        configMap:
+          name: grafana-user-config
+      - name: grafana-match
+        configMap:
+          name: grafana-match-config

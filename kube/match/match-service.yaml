@@ -10,6 +10,9 @@ spec:
   - name: "api"
     port: 81
     targetPort: 81
+  - name: "prom"
+    port: 2113
+    targetPort: 2113
   selector:
     app: match
     kind: service
