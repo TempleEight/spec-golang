@@ -40,10 +40,7 @@ func (md *mockDAO) CreateUser(input dao.CreateUserInput) (*dao.User, error) {
 func (md *mockDAO) ReadUser(input dao.ReadUserInput) (*dao.User, error) {
 	for _, user := range md.userList {
 		if user.ID == input.ID {
-			return &dao.User{
-				ID:   user.ID,
-				Name: user.Name,
-			}, nil
+			return &user, nil
 		}
 	}
 	return nil, dao.ErrUserNotFound(input.ID.String())
@@ -88,6 +85,15 @@ func (md *mockDAO) CreatePicture(input dao.CreatePictureInput) (*dao.Picture, er
 	}
 
 	return nil, dao.ErrUserNotFound(input.UserID.String())
+}
+
+func (md *mockDAO) ReadPicture(input dao.ReadPictureInput) (*dao.Picture, error) {
+	for _, picture := range md.pictureList {
+		if picture.ID == input.ID && picture.UserID == input.UserID {
+			return &picture, nil
+		}
+	}
+	return nil, dao.ErrPictureNotFound(input.ID.String())
 }
 
 func makeRequest(env env, method string, url string, body string, authToken string) (*httptest.ResponseRecorder, error) {
@@ -1127,6 +1133,207 @@ func TestCreatePictureHandlerAfterHookAbortsRequest(t *testing.T) {
 	// Create a single picture for that user
 	body := `{"Img": "c3F1YXRhbmRkYWI="}`
 	res, err := makeRequest(mockEnv, http.MethodPost, fmt.Sprintf("/user/%s/picture", UUID0), body, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that a single picture can be successfully created and then read back
+func TestReadPictureHandlerSucceeds(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	// Create a single user
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make POST request: %s", err.Error())
+	}
+
+	// Create a single picture for that user
+	body := `{"Img": "c3F1YXRhbmRkYWI="}`
+	_, err = makeRequest(mockEnv, http.MethodPost, fmt.Sprintf("/user/%s/picture", UUID0), body, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make POST request: %s", err.Error())
+	}
+
+	// Read that same picture
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/user/%s/picture/%s", UUID0, pictureUUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make GET request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusOK {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+
+	received := res.Body.String()
+	expected := fmt.Sprintf(`{"ID":"%s","Img":"c3F1YXRhbmRkYWI="}`, pictureUUID0)
+	if expected != strings.TrimSuffix(received, "\n") {
+		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
+	}
+}
+
+// Test that providing a non-existent user ID to the read picture endpoint fails
+func TestReadPictureHandlerFailsOnNonExistentID(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/user/%s/picture/%s", uuid.Nil.String(), uuid.Nil.String()), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Unauthorized, since no picture exists with that given ID
+	if res.Code != http.StatusNotFound {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that providing an empty JWT to the read endpoint fails
+func TestReadPictureHandlerFailsOnEmptyJWT(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/user/%s/picture/%s", UUID0, pictureUUID0), "", "")
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusUnauthorized {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that a valid picture cannot be read from another user
+func TestReadPictureHandlerFailsForDifferentUser(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	// Create a single user
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make POST request: %s", err.Error())
+	}
+
+	// Create a single picture for that user
+	body := `{"Img": "c3F1YXRhbmRkYWI="}`
+	_, err = makeRequest(mockEnv, http.MethodPost, fmt.Sprintf("/user/%s/picture", UUID0), body, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make POST request: %s", err.Error())
+	}
+
+	// Read that same picture, but for a different user
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/user/%s/picture/%s", UUID1, pictureUUID0), "", JWT1)
+	if err != nil {
+		t.Fatalf("Could not make GET request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusNotFound {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that a before read hook is successfully invoked
+func TestReadPictureHandlerBeforeHookSucceeds(t *testing.T) {
+	mockEnv := makeMockEnv()
+	isExecuted := false
+
+	mockEnv.hook.BeforeReadPicture(func(env *env, input *dao.ReadPictureInput) *HookError {
+		isExecuted = true
+		return nil
+	})
+
+	_, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/user/%s/picture/%s", UUID0, pictureUUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if !isExecuted {
+		t.Errorf("Hook was not executed")
+	}
+}
+
+// Test that a before read hook is successfully invoked and request is aborted
+func TestReadPictureHandlerBeforeHookAbortsRequest(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.BeforeReadPicture(func(env *env, input *dao.ReadPictureInput) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	// Read a single picture
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/user/%s/picture/%s", UUID0, pictureUUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that an after read hook is successfully invoked
+func TestReadPictureHandlerAfterHookSucceeds(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.AfterReadPicture(func(env *env, picture *dao.Picture) *HookError {
+		picture.ID = uuid.Nil
+		return nil
+	})
+
+	// Create a single user
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Create a single picture for that user
+	body := `{"Img": "c3F1YXRhbmRkYWI="}`
+	_, err = makeRequest(mockEnv, http.MethodPost, fmt.Sprintf("/user/%s/picture", UUID0), body, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Read that same picture
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/user/%s/picture/%s", UUID0, pictureUUID0), "", JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusOK {
+		t.Errorf("Wrong status code: %v", res.Code)
+	}
+
+	received := res.Body.String()
+	expected := fmt.Sprintf(`{"ID":"%s","Img":"c3F1YXRhbmRkYWI="}`, uuid.Nil.String())
+	if expected != strings.TrimSuffix(received, "\n") {
+		t.Errorf("Handler returned incorrect body: got %+v want %+v", received, expected)
+	}
+}
+
+// Test that an after read hook is successfully invoked
+func TestReadPictureHandlerAfterHookAbortsRequest(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.AfterReadPicture(func(env *env, picture *dao.Picture) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	// Create a single user
+	_, err := makeRequest(mockEnv, http.MethodPost, "/user", `{"Name": "Jay"}`, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Create a single picture for that user
+	body := `{"Img": "c3F1YXRhbmRkYWI="}`
+	_, err = makeRequest(mockEnv, http.MethodPost, fmt.Sprintf("/user/%s/picture", UUID0), body, JWT0)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Read that same picture
+	res, err := makeRequest(mockEnv, http.MethodGet, fmt.Sprintf("/user/%s/picture/%s", UUID0, pictureUUID0), "", JWT0)
 	if err != nil {
 		t.Fatalf("Could not make request: %s", err.Error())
 	}

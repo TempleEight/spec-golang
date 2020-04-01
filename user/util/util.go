@@ -42,11 +42,21 @@ func CreateErrorJSON(message string) string {
 	return string(json)
 }
 
-// ExtractIDFromRequest extracts the parameter provided under parameter ID and converts it into a string
+// ExtractIDFromRequest extracts the parameter provided under parameter ID and converts it into a uuid
 func ExtractIDFromRequest(requestParams map[string]string) (uuid.UUID, error) {
 	id := requestParams["id"]
 	if len(id) == 0 {
 		return uuid.Nil, errors.New("No ID provided")
+	}
+
+	return uuid.Parse(id)
+}
+
+// ExtractPictureIDFromRequest extracts the parameter provided under parameter picture_id and converts it into a uuid
+func ExtractPictureIDFromRequest(requestParams map[string]string) (uuid.UUID, error) {
+	id := requestParams["picture_id"]
+	if len(id) == 0 {
+		return uuid.Nil, errors.New("No Picture ID provided")
 	}
 
 	return uuid.Parse(id)

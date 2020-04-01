@@ -63,6 +63,12 @@ type createPictureResponse struct {
 	ID uuid.UUID
 }
 
+// readPictureResponse contains a single picture to be returned to the client
+type readPictureResponse struct {
+	ID  uuid.UUID
+	Img string
+}
+
 // router generates a router for this service
 func defaultRouter(env *env) *mux.Router {
 	r := mux.NewRouter()
@@ -70,7 +76,8 @@ func defaultRouter(env *env) *mux.Router {
 	r.HandleFunc("/user/{id}", env.readUserHandler).Methods(http.MethodGet)
 	r.HandleFunc("/user/{id}", env.updateUserHandler).Methods(http.MethodPut)
 	r.HandleFunc("/user/{id}", env.deleteUserHandler).Methods(http.MethodDelete)
-	r.HandleFunc("/user/{id}/picture", env.createUserPictureHandler).Methods(http.MethodPost)
+	r.HandleFunc("/user/{id}/picture", env.createPictureHandler).Methods(http.MethodPost)
+	r.HandleFunc("/user/{id}/picture/{picture_id}", env.readPictureHandler).Methods(http.MethodGet)
 	r.Use(jsonMiddleware)
 	return r
 }
@@ -371,7 +378,7 @@ func (env *env) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	metric.RequestSuccess.WithLabelValues(metric.RequestDelete).Inc()
 }
 
-func (env *env) createUserPictureHandler(w http.ResponseWriter, r *http.Request) {
+func (env *env) createPictureHandler(w http.ResponseWriter, r *http.Request) {
 	auth, err := util.ExtractAuthIDFromRequest(r.Header)
 	if err != nil {
 		respondWithError(w, fmt.Sprintf("Could not authorize request: %s", err.Error()), http.StatusUnauthorized, metric.RequestCreatePicture)
@@ -455,4 +462,65 @@ func (env *env) createUserPictureHandler(w http.ResponseWriter, r *http.Request)
 		ID: picture.ID,
 	})
 	metric.RequestSuccess.WithLabelValues(metric.RequestCreatePicture).Inc()
+}
+
+func (env *env) readPictureHandler(w http.ResponseWriter, r *http.Request) {
+	_, err := util.ExtractAuthIDFromRequest(r.Header)
+	if err != nil {
+		respondWithError(w, fmt.Sprintf("Could not authorize request: %s", err.Error()), http.StatusUnauthorized, metric.RequestReadPicture)
+		return
+	}
+
+	userID, err := util.ExtractIDFromRequest(mux.Vars(r))
+	if err != nil {
+		respondWithError(w, err.Error(), http.StatusBadRequest, metric.RequestReadPicture)
+		return
+	}
+
+	pictureID, err := util.ExtractPictureIDFromRequest(mux.Vars(r))
+	if err != nil {
+		respondWithError(w, err.Error(), http.StatusBadRequest, metric.RequestReadPicture)
+		return
+	}
+
+	input := dao.ReadPictureInput{
+		ID:     pictureID,
+		UserID: userID,
+	}
+
+	for _, hook := range env.hook.beforeReadPictureHooks {
+		err := (*hook)(env, &input)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestReadPicture)
+			return
+		}
+	}
+
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestReadPicture))
+	picture, err := env.dao.ReadPicture(input)
+	timer.ObserveDuration()
+
+	if err != nil {
+		switch err.(type) {
+		case dao.ErrPictureNotFound:
+			respondWithError(w, err.Error(), http.StatusNotFound, metric.RequestReadPicture)
+		default:
+			respondWithError(w, fmt.Sprintf("Something went wrong: %s", err.Error()), http.StatusInternalServerError, metric.RequestReadPicture)
+		}
+		return
+	}
+
+	for _, hook := range env.hook.afterReadPictureHooks {
+		err := (*hook)(env, picture)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestReadPicture)
+			return
+		}
+	}
+
+	json.NewEncoder(w).Encode(readPictureResponse{
+		ID:  picture.ID,
+		Img: base64.StdEncoding.EncodeToString(picture.Img),
+	})
+	metric.RequestSuccess.WithLabelValues(metric.RequestReadPicture).Inc()
 }
