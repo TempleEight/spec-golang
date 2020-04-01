@@ -10,6 +10,9 @@ spec:
   - name: "api"
     port: 82
     targetPort: 82
+  - name: "prom"
+    port: 2114
+    targetPort: 2114
   selector:
     app: auth
     kind: service
