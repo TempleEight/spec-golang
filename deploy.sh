@@ -32,8 +32,8 @@ kubectl create configmap grafana-datasource-config --from-file "$BASEDIR/grafana
 
 for file in "$BASEDIR/grafana/provisioning/dashboards/"*
 do
-  filename="${file##*/}" # Get everything after the final /
-  file="${filename%.*}" # Get everything before the . (filename without extension)
+  filename=$(basename $file) # Get everything after the final /
+  file=$(echo $filename | cut -f 1 -d '.') # Get everything before the . (filename without extension)
   kubectl create configmap "grafana-$file-config" --from-file "$BASEDIR/grafana/provisioning/dashboards/$filename" -o=yaml
 done
 
