@@ -23,6 +23,7 @@ type BaseDatastore interface {
 	DeleteUser(input DeleteUserInput) error
 	CreatePicture(input CreatePictureInput) (*Picture, error)
 	ReadPicture(input ReadPictureInput) (*Picture, error)
+	UpdatePicture(input UpdatePictureInput) (*Picture, error)
 }
 
 // DAO encapsulates access to the datastore
@@ -76,6 +77,13 @@ type CreatePictureInput struct {
 type ReadPictureInput struct {
 	ID     uuid.UUID
 	UserID uuid.UUID
+}
+
+// UpdatePictureInput enapsulates the information required to update a single picture in the datastore
+type UpdatePictureInput struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+	Img    []byte
 }
 
 // Init opens the datastore connection, returning a DAO
@@ -186,6 +194,24 @@ func (dao *DAO) CreatePicture(input CreatePictureInput) (*Picture, error) {
 // ReadPicture returns the picture in the datastore for a given ID
 func (dao *DAO) ReadPicture(input ReadPictureInput) (*Picture, error) {
 	row := executeQueryWithRowResponse(dao.DB, "SELECT * FROM picture WHERE id = $1 AND user_id = $2", input.ID, input.UserID)
+
+	var picture Picture
+	err := row.Scan(&picture.ID, &picture.UserID, &picture.Img)
+	if err != nil {
+		switch err {
+		case sql.ErrNoRows:
+			return nil, ErrPictureNotFound(input.ID.String())
+		default:
+			return nil, err
+		}
+	}
+
+	return &picture, nil
+}
+
+// UpdatePicture updates a picture in the datastore, returning an error if it fails
+func (dao *DAO) UpdatePicture(input UpdatePictureInput) (*Picture, error) {
+	row := executeQueryWithRowResponse(dao.DB, "UPDATE picture set img = $1 WHERE id = $2 AND user_id = $3 RETURNING *", input.Img, input.ID, input.UserID)
 
 	var picture Picture
 	err := row.Scan(&picture.ID, &picture.UserID, &picture.Img)

@@ -40,6 +40,11 @@ type createPictureRequest struct {
 	Img string `valid:"-"`
 }
 
+// updatePictureRequest contains the client-provided information required to update a single picture
+type updatePictureRequest struct {
+	Img string `valid:"-"`
+}
+
 // createUserResponse contains a newly created user to be returned to the client
 type createUserResponse struct {
 	ID   uuid.UUID
@@ -69,6 +74,11 @@ type readPictureResponse struct {
 	Img string
 }
 
+// updatePictureResponse contains a newly updated picture to be returned to the client
+type updatePictureResponse struct {
+	ID uuid.UUID
+}
+
 // router generates a router for this service
 func defaultRouter(env *env) *mux.Router {
 	r := mux.NewRouter()
@@ -78,6 +88,7 @@ func defaultRouter(env *env) *mux.Router {
 	r.HandleFunc("/user/{id}", env.deleteUserHandler).Methods(http.MethodDelete)
 	r.HandleFunc("/user/{id}/picture", env.createPictureHandler).Methods(http.MethodPost)
 	r.HandleFunc("/user/{id}/picture/{picture_id}", env.readPictureHandler).Methods(http.MethodGet)
+	r.HandleFunc("/user/{id}/picture/{picture_id}", env.updatePictureHandler).Methods(http.MethodPut)
 	r.Use(jsonMiddleware)
 	return r
 }
@@ -523,4 +534,90 @@ func (env *env) readPictureHandler(w http.ResponseWriter, r *http.Request) {
 		Img: base64.StdEncoding.EncodeToString(picture.Img),
 	})
 	metric.RequestSuccess.WithLabelValues(metric.RequestReadPicture).Inc()
+}
+
+func (env *env) updatePictureHandler(w http.ResponseWriter, r *http.Request) {
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
+	if err != nil {
+		respondWithError(w, fmt.Sprintf("Could not authorize request: %s", err.Error()), http.StatusUnauthorized, metric.RequestUpdatePicture)
+		return
+	}
+
+	userID, err := util.ExtractIDFromRequest(mux.Vars(r))
+	if err != nil {
+		respondWithError(w, err.Error(), http.StatusBadRequest, metric.RequestUpdatePicture)
+		return
+	}
+
+	// Only the auth that created the picture can update it
+	if auth.ID != userID {
+		respondWithError(w, "Not authorized to make request", http.StatusUnauthorized, metric.RequestUpdatePicture)
+		return
+	}
+
+	pictureID, err := util.ExtractPictureIDFromRequest(mux.Vars(r))
+	if err != nil {
+		respondWithError(w, err.Error(), http.StatusBadRequest, metric.RequestUpdatePicture)
+		return
+	}
+
+	var req updatePictureRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		respondWithError(w, fmt.Sprintf("Invalid request parameters: %s", err.Error()), http.StatusBadRequest, metric.RequestUpdatePicture)
+		return
+	}
+
+	_, err = valid.ValidateStruct(req)
+	if err != nil {
+		respondWithError(w, fmt.Sprintf("Invalid request parameters: %s", err.Error()), http.StatusBadRequest, metric.RequestUpdatePicture)
+		return
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(req.Img)
+	if err != nil {
+		respondWithError(w, fmt.Sprintf("Invalid request parameters: %s", err.Error()), http.StatusBadRequest, metric.RequestUpdatePicture)
+		return
+	}
+
+	input := dao.UpdatePictureInput{
+		ID:     pictureID,
+		UserID: auth.ID,
+		Img:    decoded,
+	}
+
+	for _, hook := range env.hook.beforeUpdatePictureHooks {
+		err := (*hook)(env, req, &input)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestUpdatePicture)
+			return
+		}
+	}
+
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestUpdatePicture))
+	picture, err := env.dao.UpdatePicture(input)
+	timer.ObserveDuration()
+
+	if err != nil {
+		switch err.(type) {
+		case dao.ErrPictureNotFound:
+			respondWithError(w, err.Error(), http.StatusNotFound, metric.RequestUpdatePicture)
+		default:
+			respondWithError(w, fmt.Sprintf("Something went wrong: %s", err.Error()), http.StatusInternalServerError, metric.RequestUpdatePicture)
+		}
+		return
+	}
+
+	for _, hook := range env.hook.afterUpdatePictureHooks {
+		err := (*hook)(env, picture)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestUpdatePicture)
+			return
+		}
+	}
+
+	json.NewEncoder(w).Encode(updatePictureResponse{
+		ID: picture.ID,
+	})
+	metric.RequestSuccess.WithLabelValues(metric.RequestUpdatePicture).Inc()
 }
