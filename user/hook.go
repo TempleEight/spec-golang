@@ -11,6 +11,7 @@ type Hook struct {
 	beforeDeleteHooks        []*func(env *env, input *dao.DeleteUserInput) *HookError
 	beforeCreatePictureHooks []*func(env *env, req createPictureRequest, input *dao.CreatePictureInput) *HookError
 	beforeReadPictureHooks   []*func(env *env, input *dao.ReadPictureInput) *HookError
+	beforeUpdatePictureHooks []*func(env *env, req updatePictureRequest, input *dao.UpdatePictureInput) *HookError
 
 	afterCreateHooks        []*func(env *env, user *dao.User) *HookError
 	afterReadHooks          []*func(env *env, user *dao.User) *HookError
@@ -18,6 +19,7 @@ type Hook struct {
 	afterDeleteHooks        []*func(env *env) *HookError
 	afterCreatePictureHooks []*func(env *env, picture *dao.Picture) *HookError
 	afterReadPictureHooks   []*func(env *env, picture *dao.Picture) *HookError
+	afterUpdatePictureHooks []*func(env *env, picture *dao.Picture) *HookError
 }
 
 // HookError wraps an existing error with HTTP status code
@@ -60,6 +62,11 @@ func (h *Hook) BeforeReadPicture(hook func(env *env, input *dao.ReadPictureInput
 	h.beforeReadPictureHooks = append(h.beforeReadPictureHooks, &hook)
 }
 
+// BeforeUpdatePicture adds a new hook to be executed before reading an object in the datastore
+func (h *Hook) BeforeUpdatePicture(hook func(env *env, req updatePictureRequest, input *dao.UpdatePictureInput) *HookError) {
+	h.beforeUpdatePictureHooks = append(h.beforeUpdatePictureHooks, &hook)
+}
+
 // AfterCreate adds a new hook to be executed after creating an object in the datastore
 func (h *Hook) AfterCreate(hook func(env *env, user *dao.User) *HookError) {
 	h.afterCreateHooks = append(h.afterCreateHooks, &hook)
@@ -88,4 +95,9 @@ func (h *Hook) AfterCreatePicture(hook func(env *env, user *dao.Picture) *HookEr
 // AfterReadPicture adds a new hook to be executed after reading an object in the datastore
 func (h *Hook) AfterReadPicture(hook func(env *env, user *dao.Picture) *HookError) {
 	h.afterReadPictureHooks = append(h.afterReadPictureHooks, &hook)
+}
+
+// AfterUpdatePicture adds a new hook to be executed after reading an object in the datastore
+func (h *Hook) AfterUpdatePicture(hook func(env *env, user *dao.Picture) *HookError) {
+	h.afterUpdatePictureHooks = append(h.afterUpdatePictureHooks, &hook)
 }
