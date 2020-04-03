@@ -200,12 +200,12 @@ func TestCreateAuthHandlerFailsOnDuplicate(t *testing.T) {
 	}
 }
 
-// Test that a before create hook is successfully invoked
+// Test that a before register hook is successfully invoked
 func TestCreateAuthHandlerBeforeHookSucceeds(t *testing.T) {
 	mockEnv := makeMockEnv()
 	isHookExecuted := false
 
-	mockEnv.hook.BeforeCreate(func(env *env, req registerAuthRequest, input *dao.CreateAuthInput) *HookError {
+	mockEnv.hook.BeforeRegister(func(env *env, req registerAuthRequest, input *dao.CreateAuthInput) *HookError {
 		isHookExecuted = true
 		return nil
 	})
@@ -225,11 +225,11 @@ func TestCreateAuthHandlerBeforeHookSucceeds(t *testing.T) {
 	}
 }
 
-// Test that a before create hook is successfully invoked and request is aborted
+// Test that a before register hook is successfully invoked and request is aborted
 func TestCreateUserHandlerBeforeHookAbortsRequest(t *testing.T) {
 	mockEnv := makeMockEnv()
 
-	mockEnv.hook.BeforeCreate(func(env *env, req registerAuthRequest, input *dao.CreateAuthInput) *HookError {
+	mockEnv.hook.BeforeRegister(func(env *env, req registerAuthRequest, input *dao.CreateAuthInput) *HookError {
 		return &HookError{http.StatusTeapot, errors.New("Example")}
 	})
 
@@ -244,12 +244,12 @@ func TestCreateUserHandlerBeforeHookAbortsRequest(t *testing.T) {
 	}
 }
 
-// Test that an after create hook is successfully invoked
+// Test that an after register hook is successfully invoked
 func TestCreateUserHandlerAfterHookSucceeds(t *testing.T) {
 	mockEnv := makeMockEnv()
 	isHookExecuted := false
 
-	mockEnv.hook.AfterCreate(func(env *env, auth *dao.Auth, accessToken string) *HookError {
+	mockEnv.hook.AfterRegister(func(env *env, auth *dao.Auth, accessToken string) *HookError {
 		isHookExecuted = true
 		return nil
 	})
@@ -269,11 +269,11 @@ func TestCreateUserHandlerAfterHookSucceeds(t *testing.T) {
 	}
 }
 
-// Test that an after create hook is successfully invoked
+// Test that an after register hook is successfully invoked
 func TestCreateUserHandlerAfterHookAbortsRequest(t *testing.T) {
 	mockEnv := makeMockEnv()
 
-	mockEnv.hook.AfterCreate(func(env *env, auth *dao.Auth, accessToken string) *HookError {
+	mockEnv.hook.AfterRegister(func(env *env, auth *dao.Auth, accessToken string) *HookError {
 		return &HookError{http.StatusTeapot, errors.New("Example")}
 	})
 
@@ -405,12 +405,12 @@ func TestReadAuthHandlerFailsOnNonExistentAuth(t *testing.T) {
 	}
 }
 
-// Test that a before read hook is successfully invoked
+// Test that a before login hook is successfully invoked
 func TestReadAuthHandlerBeforeHookSucceeds(t *testing.T) {
 	mockEnv := makeMockEnv()
 	isHookExecuted := false
 
-	mockEnv.hook.BeforeRead(func(env *env, req loginAuthRequest, input *dao.ReadAuthInput) *HookError {
+	mockEnv.hook.BeforeLogin(func(env *env, req loginAuthRequest, input *dao.ReadAuthInput) *HookError {
 		isHookExecuted = true
 		return nil
 	})
@@ -436,11 +436,11 @@ func TestReadAuthHandlerBeforeHookSucceeds(t *testing.T) {
 	}
 }
 
-// Test that a before read hook is successfully invoked and request is aborted
+// Test that a before login hook is successfully invoked and request is aborted
 func TestReadAuthHandlerBeforeHookAbortsRequest(t *testing.T) {
 	mockEnv := makeMockEnv()
 
-	mockEnv.hook.BeforeRead(func(env *env, req loginAuthRequest, input *dao.ReadAuthInput) *HookError {
+	mockEnv.hook.BeforeLogin(func(env *env, req loginAuthRequest, input *dao.ReadAuthInput) *HookError {
 		return &HookError{http.StatusTeapot, errors.New("Example")}
 	})
 
@@ -461,12 +461,12 @@ func TestReadAuthHandlerBeforeHookAbortsRequest(t *testing.T) {
 	}
 }
 
-// Test that an after create hook is successfully invoked
+// Test that an after login hook is successfully invoked
 func TestReadAuthHandlerAfterHookSucceeds(t *testing.T) {
 	mockEnv := makeMockEnv()
 	isHookExecuted := false
 
-	mockEnv.hook.AfterRead(func(env *env, auth *dao.Auth, accessToken string) *HookError {
+	mockEnv.hook.AfterLogin(func(env *env, auth *dao.Auth, accessToken string) *HookError {
 		isHookExecuted = true
 		return nil
 	})
@@ -492,11 +492,11 @@ func TestReadAuthHandlerAfterHookSucceeds(t *testing.T) {
 	}
 }
 
-// Test that an after read hook is successfully invoked and request aborted
+// Test that an after login hook is successfully invoked and request aborted
 func TestReadAuthHandlerAfterHookAbortsRequest(t *testing.T) {
 	mockEnv := makeMockEnv()
 
-	mockEnv.hook.AfterRead(func(env *env, auth *dao.Auth, accessToken string) *HookError {
+	mockEnv.hook.AfterLogin(func(env *env, auth *dao.Auth, accessToken string) *HookError {
 		return &HookError{http.StatusTeapot, errors.New("Example")}
 	})
 
