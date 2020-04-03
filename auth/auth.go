@@ -156,7 +156,7 @@ func (env *env) registerAuthHandler(w http.ResponseWriter, r *http.Request) {
 		Password: string(hashedPassword),
 	}
 
-	for _, hook := range env.hook.beforeCreateHooks {
+	for _, hook := range env.hook.beforeRegisterHooks {
 		err := (*hook)(env, req, &input)
 		if err != nil {
 			respondWithError(w, err.Error(), err.statusCode, metric.RequestRegister)
@@ -183,7 +183,7 @@ func (env *env) registerAuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, hook := range env.hook.afterCreateHooks {
+	for _, hook := range env.hook.afterRegisterHooks {
 		err := (*hook)(env, auth, accessToken)
 		if err != nil {
 			respondWithError(w, err.Error(), err.statusCode, metric.RequestRegister)
@@ -215,7 +215,7 @@ func (env *env) loginAuthHandler(w http.ResponseWriter, r *http.Request) {
 		Email: req.Email,
 	}
 
-	for _, hook := range env.hook.beforeReadHooks {
+	for _, hook := range env.hook.beforeLoginHooks {
 		err := (*hook)(env, req, &input)
 		if err != nil {
 			respondWithError(w, err.Error(), err.statusCode, metric.RequestLogin)
@@ -248,7 +248,7 @@ func (env *env) loginAuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, hook := range env.hook.afterReadHooks {
+	for _, hook := range env.hook.afterLoginHooks {
 		err := (*hook)(env, auth, accessToken)
 		if err != nil {
 			respondWithError(w, err.Error(), err.statusCode, metric.RequestLogin)
