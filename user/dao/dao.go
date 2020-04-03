@@ -24,6 +24,7 @@ type BaseDatastore interface {
 	CreatePicture(input CreatePictureInput) (*Picture, error)
 	ReadPicture(input ReadPictureInput) (*Picture, error)
 	UpdatePicture(input UpdatePictureInput) (*Picture, error)
+	DeletePicture(input DeletePictureInput) error
 }
 
 // DAO encapsulates access to the datastore
@@ -84,6 +85,12 @@ type UpdatePictureInput struct {
 	ID     uuid.UUID
 	UserID uuid.UUID
 	Img    []byte
+}
+
+// DeletePictureInput encapsulates the information required to delete a single picture in the datastore
+type DeletePictureInput struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
 }
 
 // Init opens the datastore connection, returning a DAO
@@ -225,4 +232,16 @@ func (dao *DAO) UpdatePicture(input UpdatePictureInput) (*Picture, error) {
 	}
 
 	return &picture, nil
+}
+
+// DeletePicture deletes a single picture from the datastore
+func (dao *DAO) DeletePicture(input DeletePictureInput) error {
+	rowsAffected, err := executeQuery(dao.DB, "DELETE FROM picture WHERE id = $1 AND user_id = $2", input.ID, input.UserID)
+	if err != nil {
+		return err
+	} else if rowsAffected == 0 {
+		return ErrPictureNotFound(input.ID.String())
+	}
+
+	return nil
 }
