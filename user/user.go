@@ -89,6 +89,7 @@ func defaultRouter(env *env) *mux.Router {
 	r.HandleFunc("/user/{id}/picture", env.createPictureHandler).Methods(http.MethodPost)
 	r.HandleFunc("/user/{id}/picture/{picture_id}", env.readPictureHandler).Methods(http.MethodGet)
 	r.HandleFunc("/user/{id}/picture/{picture_id}", env.updatePictureHandler).Methods(http.MethodPut)
+	r.HandleFunc("/user/{id}/picture/{picture_id}", env.deletePictureHandler).Methods(http.MethodDelete)
 	r.Use(jsonMiddleware)
 	return r
 }
@@ -620,4 +621,68 @@ func (env *env) updatePictureHandler(w http.ResponseWriter, r *http.Request) {
 		ID: picture.ID,
 	})
 	metric.RequestSuccess.WithLabelValues(metric.RequestUpdatePicture).Inc()
+}
+
+func (env *env) deletePictureHandler(w http.ResponseWriter, r *http.Request) {
+	auth, err := util.ExtractAuthIDFromRequest(r.Header)
+	if err != nil {
+		respondWithError(w, fmt.Sprintf("Could not authorize request: %s", err.Error()), http.StatusUnauthorized, metric.RequestDeletePicture)
+		return
+	}
+
+	userID, err := util.ExtractIDFromRequest(mux.Vars(r))
+	if err != nil {
+		respondWithError(w, err.Error(), http.StatusBadRequest, metric.RequestDeletePicture)
+		return
+	}
+
+	// Only the auth that created the picture can delete it
+	if auth.ID != userID {
+		respondWithError(w, "Not authorized to make request", http.StatusUnauthorized, metric.RequestDeletePicture)
+		return
+	}
+
+	pictureID, err := util.ExtractPictureIDFromRequest(mux.Vars(r))
+	if err != nil {
+		respondWithError(w, err.Error(), http.StatusBadRequest, metric.RequestDeletePicture)
+		return
+	}
+
+	input := dao.DeletePictureInput{
+		ID:     pictureID,
+		UserID: userID,
+	}
+
+	for _, hook := range env.hook.beforeDeletePictureHooks {
+		err := (*hook)(env, &input)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestDeletePicture)
+			return
+		}
+	}
+
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestDeletePicture))
+	err = env.dao.DeletePicture(input)
+	timer.ObserveDuration()
+
+	if err != nil {
+		switch err.(type) {
+		case dao.ErrPictureNotFound:
+			respondWithError(w, err.Error(), http.StatusNotFound, metric.RequestDeletePicture)
+		default:
+			respondWithError(w, fmt.Sprintf("Something went wrong: %s", err.Error()), http.StatusInternalServerError, metric.RequestDeletePicture)
+		}
+		return
+	}
+
+	for _, hook := range env.hook.afterDeletePictureHooks {
+		err := (*hook)(env)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestDeletePicture)
+			return
+		}
+	}
+
+	json.NewEncoder(w).Encode(struct{}{})
+	metric.RequestSuccess.WithLabelValues(metric.RequestDeletePicture).Inc()
 }

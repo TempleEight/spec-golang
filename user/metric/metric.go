@@ -13,6 +13,7 @@ var (
 	RequestCreatePicture = "create_picture"
 	RequestReadPicture   = "read_picture"
 	RequestUpdatePicture = "update_picture"
+	RequestDeletePicture = "delete_picture"
 
 	RequestSuccess = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "user_request_success_total",

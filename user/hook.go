@@ -12,6 +12,7 @@ type Hook struct {
 	beforeCreatePictureHooks []*func(env *env, req createPictureRequest, input *dao.CreatePictureInput) *HookError
 	beforeReadPictureHooks   []*func(env *env, input *dao.ReadPictureInput) *HookError
 	beforeUpdatePictureHooks []*func(env *env, req updatePictureRequest, input *dao.UpdatePictureInput) *HookError
+	beforeDeletePictureHooks []*func(env *env, input *dao.DeletePictureInput) *HookError
 
 	afterCreateHooks        []*func(env *env, user *dao.User) *HookError
 	afterReadHooks          []*func(env *env, user *dao.User) *HookError
@@ -20,6 +21,7 @@ type Hook struct {
 	afterCreatePictureHooks []*func(env *env, picture *dao.Picture) *HookError
 	afterReadPictureHooks   []*func(env *env, picture *dao.Picture) *HookError
 	afterUpdatePictureHooks []*func(env *env, picture *dao.Picture) *HookError
+	afterDeletePictureHooks []*func(env *env) *HookError
 }
 
 // HookError wraps an existing error with HTTP status code
@@ -67,6 +69,11 @@ func (h *Hook) BeforeUpdatePicture(hook func(env *env, req updatePictureRequest,
 	h.beforeUpdatePictureHooks = append(h.beforeUpdatePictureHooks, &hook)
 }
 
+// BeforeDeletePicture adds a new hook to be executed before deletin an object in the datastore
+func (h *Hook) BeforeDeletePicture(hook func(env *env, input *dao.DeletePictureInput) *HookError) {
+	h.beforeDeletePictureHooks = append(h.beforeDeletePictureHooks, &hook)
+}
+
 // AfterCreate adds a new hook to be executed after creating an object in the datastore
 func (h *Hook) AfterCreate(hook func(env *env, user *dao.User) *HookError) {
 	h.afterCreateHooks = append(h.afterCreateHooks, &hook)
@@ -100,4 +107,9 @@ func (h *Hook) AfterReadPicture(hook func(env *env, user *dao.Picture) *HookErro
 // AfterUpdatePicture adds a new hook to be executed after reading an object in the datastore
 func (h *Hook) AfterUpdatePicture(hook func(env *env, user *dao.Picture) *HookError) {
 	h.afterUpdatePictureHooks = append(h.afterUpdatePictureHooks, &hook)
+}
+
+// AfterDeletePicture adds a new hook to be executed after deleting an object in the datastore
+func (h *Hook) AfterDeletePicture(hook func(env *env) *HookError) {
+	h.afterDeletePictureHooks = append(h.afterDeletePictureHooks, &hook)
 }
