@@ -42,10 +42,11 @@ type ListMatchInput struct {
 
 // CreateMatchInput encapsulates the information required to create a single match in the datastore
 type CreateMatchInput struct {
-	ID      uuid.UUID
-	AuthID  uuid.UUID
-	UserOne uuid.UUID
-	UserTwo uuid.UUID
+	ID        uuid.UUID
+	AuthID    uuid.UUID
+	UserOne   uuid.UUID
+	UserTwo   uuid.UUID
+	MatchedOn time.Time
 }
 
 // ReadMatchInput encapsulates the information required to read a single match in the datastore
@@ -55,9 +56,10 @@ type ReadMatchInput struct {
 
 // UpdateMatchInput encapsulates the information required to update a single match in the datastore
 type UpdateMatchInput struct {
-	ID      uuid.UUID
-	UserOne uuid.UUID
-	UserTwo uuid.UUID
+	ID        uuid.UUID
+	UserOne   uuid.UUID
+	UserTwo   uuid.UUID
+	MatchedOn time.Time
 }
 
 // DeleteMatchInput encapsulates the information required to delete a single match in the datastore
@@ -123,7 +125,7 @@ func (dao *DAO) ListMatch(input ListMatchInput) (*[]Match, error) {
 
 // CreateMatch creates a new match in the datastore, returning the newly created match
 func (dao *DAO) CreateMatch(input CreateMatchInput) (*Match, error) {
-	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO match (id, created_by, userOne, userTwo, matchedOn) VALUES ($1, $2, $3, $4, NOW()) RETURNING *", input.ID, input.AuthID, input.UserOne, input.UserTwo)
+	row := executeQueryWithRowResponse(dao.DB, "INSERT INTO match (id, created_by, userOne, userTwo, matchedOn) VALUES ($1, $2, $3, $4, $5) RETURNING *", input.ID, input.AuthID, input.UserOne, input.UserTwo, input.MatchedOn)
 
 	var match Match
 	err := row.Scan(&match.ID, &match.CreatedBy, &match.UserOne, &match.UserTwo, &match.MatchedOn)
@@ -154,7 +156,7 @@ func (dao *DAO) ReadMatch(input ReadMatchInput) (*Match, error) {
 
 // UpdateMatch updates a match in the datastore, returning the newly updated match
 func (dao *DAO) UpdateMatch(input UpdateMatchInput) (*Match, error) {
-	row := executeQueryWithRowResponse(dao.DB, "UPDATE match SET userOne = $1, userTwo = $2, matchedOn = NOW() WHERE id = $3 RETURNING *", input.UserOne, input.UserTwo, input.ID)
+	row := executeQueryWithRowResponse(dao.DB, "UPDATE match SET userOne = $1, userTwo = $2, matchedOn = $3 WHERE id = $4 RETURNING *", input.UserOne, input.UserTwo, input.MatchedOn, input.ID)
 
 	var match Match
 	err := row.Scan(&match.ID, &match.CreatedBy, &match.UserOne, &match.UserTwo, &match.MatchedOn)
