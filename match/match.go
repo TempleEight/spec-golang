@@ -6,20 +6,25 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/TempleEight/spec-golang/match/comm"
 	"github.com/TempleEight/spec-golang/match/dao"
+	"github.com/TempleEight/spec-golang/match/metric"
 	"github.com/TempleEight/spec-golang/match/util"
 	valid "github.com/asaskevich/govalidator"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // env defines the environment that requests should be executed within
 type env struct {
 	dao  dao.Datastore
 	comm comm.Comm
+	hook Hook
 }
 
 // createMatchRequest contains the client-provided information required to create a single match
@@ -63,8 +68,8 @@ type updateMatchResponse struct {
 	MatchedOn string
 }
 
-// router generates a router for this service
-func (env *env) router() *mux.Router {
+// defaultRouter generates a router for this service
+func defaultRouter(env *env) *mux.Router {
 	r := mux.NewRouter()
 	// Mux directs to first matching route, i.e. the order matters
 	r.HandleFunc("/match/all", env.listMatchHandler).Methods(http.MethodGet)
@@ -74,6 +79,13 @@ func (env *env) router() *mux.Router {
 	r.HandleFunc("/match/{id}", env.deleteMatchHandler).Methods(http.MethodDelete)
 	r.Use(jsonMiddleware)
 	return r
+}
+
+// respondWithError responds to a HTTP request with a JSON error response
+func respondWithError(w http.ResponseWriter, err string, statusCode int, requestType string) {
+	w.WriteHeader(statusCode)
+	fmt.Fprintln(w, util.CreateErrorJSON(err))
+	metric.RequestFailure.WithLabelValues(requestType, strconv.Itoa(statusCode)).Inc()
 }
 
 func main() {
@@ -88,15 +100,33 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Prometheus metrics
+	promPort, ok := config.Ports["prometheus"]
+	if !ok {
+		log.Fatal("A port for the key prometheus was not found")
+	}
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		http.ListenAndServe(fmt.Sprintf(":%d", promPort), nil)
+	}()
+
 	d, err := dao.Init(config)
 	if err != nil {
 		log.Fatal(err)
 	}
 	c := comm.Init(config)
 
-	env := env{d, c}
+	env := env{d, c, Hook{}}
 
-	log.Fatal(http.ListenAndServe(":81", env.router()))
+	// Call into non-generated entry-point
+	router := defaultRouter(&env)
+	env.setup(router)
+
+	servicePort, ok := config.Ports["service"]
+	if !ok {
+		log.Fatal("A port for the key service was not found")
+	}
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", servicePort), router))
 }
 
 func jsonMiddleware(next http.Handler) http.Handler {
@@ -121,18 +151,37 @@ func checkAuthorization(env *env, matchID uuid.UUID, auth *util.Auth) (bool, err
 func (env *env) listMatchHandler(w http.ResponseWriter, r *http.Request) {
 	auth, err := util.ExtractAuthIDFromRequest(r.Header)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusUnauthorized)
+		respondWithError(w, fmt.Sprintf("Could not authorize request: %s", err.Error()), http.StatusUnauthorized, metric.RequestList)
 		return
 	}
 
-	matchList, err := env.dao.ListMatch(dao.ListMatchInput{
+	input := dao.ListMatchInput{
 		AuthID: auth.ID,
-	})
+	}
+
+	for _, hook := range env.hook.beforeListHooks {
+		err := (*hook)(env, &input)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestList)
+			return
+		}
+	}
+
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestList))
+	matchList, err := env.dao.ListMatch(input)
+	timer.ObserveDuration()
+
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
+		respondWithError(w, fmt.Sprintf("Something went wrong: %s", err.Error()), http.StatusInternalServerError, metric.RequestList)
 		return
+	}
+
+	for _, hook := range env.hook.afterListHooks {
+		err := (*hook)(env, matchList)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestList)
+			return
+		}
 	}
 
 	matchListResp := listMatchResponse{
@@ -148,80 +197,92 @@ func (env *env) listMatchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(matchListResp)
+	metric.RequestSuccess.WithLabelValues(metric.RequestList).Inc()
 }
 
 func (env *env) createMatchHandler(w http.ResponseWriter, r *http.Request) {
 	auth, err := util.ExtractAuthIDFromRequest(r.Header)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusUnauthorized)
+		respondWithError(w, fmt.Sprintf("Could not authorize request: %s", err.Error()), http.StatusUnauthorized, metric.RequestCreate)
 		return
 	}
 
 	var req createMatchRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		respondWithError(w, fmt.Sprintf("Invalid request parameters: %s", err.Error()), http.StatusBadRequest, metric.RequestCreate)
 		return
 	}
 
 	if req.UserOne == nil || req.UserTwo == nil {
-		errMsg := util.CreateErrorJSON("Missing request parameter(s)")
-		http.Error(w, errMsg, http.StatusBadRequest)
+		respondWithError(w, "Missing request parameter(s)", http.StatusBadRequest, metric.RequestCreate)
 		return
 	}
 
 	_, err = valid.ValidateStruct(req)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		respondWithError(w, fmt.Sprintf("Invalid request parameters: %s", err.Error()), http.StatusBadRequest, metric.RequestCreate)
 		return
 	}
 
 	userOneValid, err := env.comm.CheckUser(*req.UserOne, r.Header.Get("Authorization"))
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unable to reach user service: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
+		respondWithError(w, fmt.Sprintf("Unable to reach user service: %s", err.Error()), http.StatusInternalServerError, metric.RequestCreate)
 		return
 	}
 
 	if !userOneValid {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unknown User: %s", req.UserOne.String()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		respondWithError(w, fmt.Sprintf("Unknown User: %s", req.UserOne.String()), http.StatusBadRequest, metric.RequestCreate)
 		return
 	}
 
 	userTwoValid, err := env.comm.CheckUser(*req.UserTwo, r.Header.Get("Authorization"))
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unable to reach user service: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
+		respondWithError(w, fmt.Sprintf("Unable to reach user service: %s", err.Error()), http.StatusInternalServerError, metric.RequestCreate)
 		return
 	}
 
 	if !userTwoValid {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unknown User: %s", req.UserTwo.String()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		respondWithError(w, fmt.Sprintf("Unknown User: %s", req.UserTwo.String()), http.StatusBadRequest, metric.RequestCreate)
 		return
 	}
 
 	uuid, err := uuid.NewUUID()
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not create UUID: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
+		respondWithError(w, fmt.Sprintf("Could not create UUID: %s", err.Error()), http.StatusInternalServerError, metric.RequestCreate)
 		return
 	}
 
-	match, err := env.dao.CreateMatch(dao.CreateMatchInput{
+	input := dao.CreateMatchInput{
 		ID:      uuid,
 		AuthID:  auth.ID,
 		UserOne: *req.UserOne,
 		UserTwo: *req.UserTwo,
-	})
+	}
+
+	for _, hook := range env.hook.beforeCreateHooks {
+		err := (*hook)(env, req, &input)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestCreate)
+			return
+		}
+	}
+
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestCreate))
+	match, err := env.dao.CreateMatch(input)
+	timer.ObserveDuration()
+
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
+		respondWithError(w, fmt.Sprintf("Something went wrong: %s", err.Error()), http.StatusInternalServerError, metric.RequestCreate)
 		return
+	}
+
+	for _, hook := range env.hook.afterCreateHooks {
+		err := (*hook)(env, match)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestCreate)
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(createMatchResponse{
@@ -230,19 +291,19 @@ func (env *env) createMatchHandler(w http.ResponseWriter, r *http.Request) {
 		UserTwo:   match.UserTwo,
 		MatchedOn: match.MatchedOn.Format(time.RFC3339),
 	})
+	metric.RequestSuccess.WithLabelValues(metric.RequestCreate).Inc()
 }
 
 func (env *env) readMatchHandler(w http.ResponseWriter, r *http.Request) {
 	auth, err := util.ExtractAuthIDFromRequest(r.Header)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusUnauthorized)
+		respondWithError(w, fmt.Sprintf("Could not authorize request: %s", err.Error()), http.StatusUnauthorized, metric.RequestRead)
 		return
 	}
 
 	matchID, err := util.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
-		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		respondWithError(w, err.Error(), http.StatusBadRequest, metric.RequestRead)
 		return
 	}
 
@@ -250,33 +311,50 @@ func (env *env) readMatchHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrMatchNotFound:
-			errMsg := util.CreateErrorJSON("Unauthorized")
-			http.Error(w, errMsg, http.StatusUnauthorized)
+			respondWithError(w, "Unauthorized", http.StatusUnauthorized, metric.RequestRead)
 		default:
-			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-			http.Error(w, errMsg, http.StatusInternalServerError)
+			respondWithError(w, fmt.Sprintf("Something went wrong: %s", err.Error()), http.StatusInternalServerError, metric.RequestRead)
 		}
 		return
 	}
 
 	if !authorized {
-		errMsg := util.CreateErrorJSON("Unauthorized")
-		http.Error(w, errMsg, http.StatusUnauthorized)
+		respondWithError(w, "Unauthorized", http.StatusUnauthorized, metric.RequestRead)
 		return
 	}
 
-	match, err := env.dao.ReadMatch(dao.ReadMatchInput{
+	input := dao.ReadMatchInput{
 		ID: matchID,
-	})
+	}
+
+	for _, hook := range env.hook.beforeReadHooks {
+		err := (*hook)(env, &input)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestRead)
+			return
+		}
+	}
+
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestRead))
+	match, err := env.dao.ReadMatch(input)
+	timer.ObserveDuration()
+
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrMatchNotFound:
-			http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusNotFound)
+			respondWithError(w, err.Error(), http.StatusNotFound, metric.RequestRead)
 		default:
-			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-			http.Error(w, errMsg, http.StatusInternalServerError)
+			respondWithError(w, fmt.Sprintf("Something went wrong: %s", err.Error()), http.StatusInternalServerError, metric.RequestRead)
 		}
 		return
+	}
+
+	for _, hook := range env.hook.afterReadHooks {
+		err := (*hook)(env, match)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestRead)
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(readMatchResponse{
@@ -285,19 +363,19 @@ func (env *env) readMatchHandler(w http.ResponseWriter, r *http.Request) {
 		UserTwo:   match.UserTwo,
 		MatchedOn: match.MatchedOn.Format(time.RFC3339),
 	})
+	metric.RequestSuccess.WithLabelValues(metric.RequestRead).Inc()
 }
 
 func (env *env) updateMatchHandler(w http.ResponseWriter, r *http.Request) {
 	auth, err := util.ExtractAuthIDFromRequest(r.Header)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusUnauthorized)
+		respondWithError(w, fmt.Sprintf("Could not authorize request: %s", err.Error()), http.StatusUnauthorized, metric.RequestUpdate)
 		return
 	}
 
 	matchID, err := util.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
-		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		respondWithError(w, err.Error(), http.StatusBadRequest, metric.RequestUpdate)
 		return
 	}
 
@@ -305,81 +383,91 @@ func (env *env) updateMatchHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrMatchNotFound:
-			errMsg := util.CreateErrorJSON("Unauthorized")
-			http.Error(w, errMsg, http.StatusUnauthorized)
+			respondWithError(w, "Unauthorized", http.StatusUnauthorized, metric.RequestUpdate)
 		default:
-			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-			http.Error(w, errMsg, http.StatusInternalServerError)
+			respondWithError(w, fmt.Sprintf("Something went wrong: %s", err.Error()), http.StatusInternalServerError, metric.RequestUpdate)
 		}
 		return
 	}
 
 	if !authorized {
-		errMsg := util.CreateErrorJSON("Unauthorized")
-		http.Error(w, errMsg, http.StatusUnauthorized)
+		respondWithError(w, "Unauthorized", http.StatusUnauthorized, metric.RequestUpdate)
 		return
 	}
 
 	var req updateMatchRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		respondWithError(w, fmt.Sprintf("Invalid request parameters: %s", err.Error()), http.StatusBadRequest, metric.RequestUpdate)
 		return
 	}
 	if req.UserOne == nil || req.UserTwo == nil {
-		errMsg := util.CreateErrorJSON("Missing request parameter")
-		http.Error(w, errMsg, http.StatusBadRequest)
+		respondWithError(w, "Missing request parameter", http.StatusBadRequest, metric.RequestUpdate)
 		return
 	}
 
 	_, err = valid.ValidateStruct(req)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		respondWithError(w, fmt.Sprintf("Invalid request parameters: %s", err.Error()), http.StatusBadRequest, metric.RequestUpdate)
 		return
 	}
 
 	userOneValid, err := env.comm.CheckUser(*req.UserOne, r.Header.Get("Authorization"))
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
+		respondWithError(w, fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()), http.StatusInternalServerError, metric.RequestUpdate)
 		return
 	}
 
 	if !userOneValid {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unknown User: %s", req.UserOne.String()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		respondWithError(w, fmt.Sprintf("Unknown User: %s", req.UserOne.String()), http.StatusBadRequest, metric.RequestUpdate)
 		return
 	}
 
 	userTwoValid, err := env.comm.CheckUser(*req.UserTwo, r.Header.Get("Authorization"))
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
+		respondWithError(w, fmt.Sprintf("Unable to reach %s service: %s", "user", err.Error()), http.StatusInternalServerError, metric.RequestUpdate)
 		return
 	}
 
 	if !userTwoValid {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Unknown User: %s", req.UserTwo.String()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		respondWithError(w, fmt.Sprintf("Unknown User: %s", req.UserTwo.String()), http.StatusBadRequest, metric.RequestUpdate)
 		return
 	}
 
-	match, err := env.dao.UpdateMatch(dao.UpdateMatchInput{
+	input := dao.UpdateMatchInput{
 		ID:      matchID,
 		UserOne: *req.UserOne,
 		UserTwo: *req.UserTwo,
-	})
+	}
+
+	for _, hook := range env.hook.beforeUpdateHooks {
+		err := (*hook)(env, req, &input)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestUpdate)
+			return
+		}
+	}
+
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestUpdate))
+	match, err := env.dao.UpdateMatch(input)
+	timer.ObserveDuration()
+
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrMatchNotFound:
-			http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusNotFound)
+			respondWithError(w, err.Error(), http.StatusNotFound, metric.RequestUpdate)
 		default:
-			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-			http.Error(w, errMsg, http.StatusInternalServerError)
+			respondWithError(w, fmt.Sprintf("Something went wrong: %s", err.Error()), http.StatusInternalServerError, metric.RequestUpdate)
 		}
 		return
+	}
+
+	for _, hook := range env.hook.afterUpdateHooks {
+		err := (*hook)(env, match)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestUpdate)
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(updateMatchResponse{
@@ -388,19 +476,19 @@ func (env *env) updateMatchHandler(w http.ResponseWriter, r *http.Request) {
 		UserTwo:   match.UserTwo,
 		MatchedOn: match.MatchedOn.Format(time.RFC3339),
 	})
+	metric.RequestSuccess.WithLabelValues(metric.RequestUpdate).Inc()
 }
 
 func (env *env) deleteMatchHandler(w http.ResponseWriter, r *http.Request) {
 	auth, err := util.ExtractAuthIDFromRequest(r.Header)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not authorize request: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusUnauthorized)
+		respondWithError(w, fmt.Sprintf("Could not authorize request: %s", err.Error()), http.StatusUnauthorized, metric.RequestDelete)
 		return
 	}
 
 	matchID, err := util.ExtractIDFromRequest(mux.Vars(r))
 	if err != nil {
-		http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusBadRequest)
+		respondWithError(w, err.Error(), http.StatusBadRequest, metric.RequestDelete)
 		return
 	}
 
@@ -408,34 +496,52 @@ func (env *env) deleteMatchHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrMatchNotFound:
-			errMsg := util.CreateErrorJSON("Unauthorized")
-			http.Error(w, errMsg, http.StatusUnauthorized)
+			respondWithError(w, "Unauthorized", http.StatusUnauthorized, metric.RequestDelete)
 		default:
-			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-			http.Error(w, errMsg, http.StatusInternalServerError)
+			respondWithError(w, fmt.Sprintf("Something went wrong: %s", err.Error()), http.StatusInternalServerError, metric.RequestDelete)
 		}
 		return
 	}
 
 	if !authorized {
-		errMsg := util.CreateErrorJSON("Unauthorized")
-		http.Error(w, errMsg, http.StatusUnauthorized)
+		respondWithError(w, "Unauthorized", http.StatusUnauthorized, metric.RequestDelete)
 		return
 	}
 
-	err = env.dao.DeleteMatch(dao.DeleteMatchInput{
+	input := dao.DeleteMatchInput{
 		ID: matchID,
-	})
+	}
+
+	for _, hook := range env.hook.beforeDeleteHooks {
+		err := (*hook)(env, &input)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestDelete)
+			return
+		}
+	}
+
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestDelete))
+	err = env.dao.DeleteMatch(input)
+	timer.ObserveDuration()
+
 	if err != nil {
 		switch err.(type) {
 		case dao.ErrMatchNotFound:
-			http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusNotFound)
+			respondWithError(w, err.Error(), http.StatusNotFound, metric.RequestDelete)
 		default:
-			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-			http.Error(w, errMsg, http.StatusInternalServerError)
+			respondWithError(w, fmt.Sprintf("Something went wrong: %s", err.Error()), http.StatusInternalServerError, metric.RequestDelete)
 		}
 		return
 	}
 
+	for _, hook := range env.hook.afterDeleteHooks {
+		err := (*hook)(env)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestDelete)
+			return
+		}
+	}
+
 	json.NewEncoder(w).Encode(struct{}{})
+	metric.RequestSuccess.WithLabelValues(metric.RequestDelete).Inc()
 }

@@ -5,5 +5,9 @@
   "sslMode": "disable",
   "services": {
     "kong-admin": "http://kong:8001"
+  },
+  "ports": {
+    "service": 82,
+    "prometheus": 2114
   }
 }

@@ -4,7 +4,8 @@ services:
   user:
     build: ./user
     ports:
-      - "80:80" 
+      - "80:80"
+      - "2112:2112" 
     networks: 
       - user-network 
       - kong-network
@@ -21,7 +22,8 @@ services:
   match:
     build: ./match
     ports:
-      - "81:81" 
+      - "81:81"
+      - "2113:2113"
     networks: 
       - match-network
       - kong-network
@@ -41,6 +43,7 @@ services:
       - kong
     ports:
       - "82:82"
+      - "2114:2114"
     networks:
       - auth-network
       - kong-network
@@ -118,8 +121,31 @@ services:
     networks:
       - kong-network
 
+  # Metrics
+  grafana:
+    image: grafana/grafana:6.6.2
+    ports:
+      - "3000:3000"
+    networks:
+      - metrics-network
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+
+  prom:
+    image: prom/prometheus:v2.16.0
+    ports:
+      - "9090:9090"
+    networks:
+      - metrics-network
+      - user-network
+      - match-network
+      - auth-network
+    volumes:
+      - ./prometheus:/etc/prometheus
+
 networks:
   user-network:
   match-network:
   auth-network:
   kong-network:
+  metrics-network:

@@ -27,7 +27,7 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 
-	environment = env{d}
+	environment = env{d, Hook{}}
 
 	os.Exit(m.Run())
 }

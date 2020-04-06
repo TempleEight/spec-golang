@@ -5,5 +5,9 @@
   "sslMode": "disable",
   "services": {
     "user": "http://user:80/user"
+  },
+  "ports": {
+    "service": 81,
+    "prometheus": 2113
   }
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -63,7 +64,7 @@ func makeRequest(env env, method string, url string, body string) (*httptest.Res
 		return nil, err
 	}
 
-	env.router().ServeHTTP(rec, req)
+	defaultRouter(&env).ServeHTTP(rec, req)
 	return rec, nil
 }
 
@@ -74,6 +75,7 @@ func makeMockEnv() env {
 		&mockDAO{authList: make([]dao.Auth, 0)},
 		&mockComm,
 		cred,
+		Hook{},
 	}
 }
 
@@ -198,6 +200,94 @@ func TestCreateAuthHandlerFailsOnDuplicate(t *testing.T) {
 	}
 }
 
+// Test that a before register hook is successfully invoked
+func TestCreateAuthHandlerBeforeHookSucceeds(t *testing.T) {
+	mockEnv := makeMockEnv()
+	isHookExecuted := false
+
+	mockEnv.hook.BeforeRegister(func(env *env, req registerAuthRequest, input *dao.CreateAuthInput) *HookError {
+		isHookExecuted = true
+		return nil
+	})
+
+	// Create a single auth
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth/register", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("Wrong status code: %v", res.Code)
+	}
+
+	if !isHookExecuted {
+		t.Fatalf("Hook was not executed")
+	}
+}
+
+// Test that a before register hook is successfully invoked and request is aborted
+func TestCreateUserHandlerBeforeHookAbortsRequest(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.BeforeRegister(func(env *env, req registerAuthRequest, input *dao.CreateAuthInput) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	// Create a single auth
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth/register", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Fatalf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that an after register hook is successfully invoked
+func TestCreateUserHandlerAfterHookSucceeds(t *testing.T) {
+	mockEnv := makeMockEnv()
+	isHookExecuted := false
+
+	mockEnv.hook.AfterRegister(func(env *env, auth *dao.Auth, accessToken string) *HookError {
+		isHookExecuted = true
+		return nil
+	})
+
+	// Create a single auth
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth/register", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("Wrong status code: %v", res.Code)
+	}
+
+	if !isHookExecuted {
+		t.Fatalf("Hook was not executed")
+	}
+}
+
+// Test that an after register hook is successfully invoked
+func TestCreateUserHandlerAfterHookAbortsRequest(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.AfterRegister(func(env *env, auth *dao.Auth, accessToken string) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	// Create a single auth
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth/register", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Fatalf("Wrong status code: %v", res.Code)
+	}
+}
+
 // Test that a single auth can be successfully created and then read back
 func TestReadAuthHandlerSucceeds(t *testing.T) {
 	mockEnv := makeMockEnv()
@@ -312,5 +402,117 @@ func TestReadAuthHandlerFailsOnNonExistentAuth(t *testing.T) {
 
 	if res.Code != http.StatusUnauthorized {
 		t.Errorf("Wrong status code %v", res.Code)
+	}
+}
+
+// Test that a before login hook is successfully invoked
+func TestReadAuthHandlerBeforeHookSucceeds(t *testing.T) {
+	mockEnv := makeMockEnv()
+	isHookExecuted := false
+
+	mockEnv.hook.BeforeLogin(func(env *env, req loginAuthRequest, input *dao.ReadAuthInput) *HookError {
+		isHookExecuted = true
+		return nil
+	})
+
+	// Create a single auth
+	_, err := makeRequest(mockEnv, http.MethodPost, "/auth/register", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Access that same auth
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth/login", `{"email": "jay@test.com", "password":"BlackcurrantCrush123"}`)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("Wrong status code: %v", res.Code)
+	}
+
+	if !isHookExecuted {
+		t.Fatalf("Hook was not executed")
+	}
+}
+
+// Test that a before login hook is successfully invoked and request is aborted
+func TestReadAuthHandlerBeforeHookAbortsRequest(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.BeforeLogin(func(env *env, req loginAuthRequest, input *dao.ReadAuthInput) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	// Create a single auth
+	_, err := makeRequest(mockEnv, http.MethodPost, "/auth/register", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Access that same auth
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth/login", `{"email": "jay@test.com", "password":"BlackcurrantCrush123"}`)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Fatalf("Wrong status code: %v", res.Code)
+	}
+}
+
+// Test that an after login hook is successfully invoked
+func TestReadAuthHandlerAfterHookSucceeds(t *testing.T) {
+	mockEnv := makeMockEnv()
+	isHookExecuted := false
+
+	mockEnv.hook.AfterLogin(func(env *env, auth *dao.Auth, accessToken string) *HookError {
+		isHookExecuted = true
+		return nil
+	})
+
+	// Create a single auth
+	_, err := makeRequest(mockEnv, http.MethodPost, "/auth/register", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Access that same auth
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth/login", `{"email": "jay@test.com", "password":"BlackcurrantCrush123"}`)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("Wrong status code: %v", res.Code)
+	}
+
+	if !isHookExecuted {
+		t.Fatalf("Hook was not executed")
+	}
+}
+
+// Test that an after login hook is successfully invoked and request aborted
+func TestReadAuthHandlerAfterHookAbortsRequest(t *testing.T) {
+	mockEnv := makeMockEnv()
+
+	mockEnv.hook.AfterLogin(func(env *env, auth *dao.Auth, accessToken string) *HookError {
+		return &HookError{http.StatusTeapot, errors.New("Example")}
+	})
+
+	// Create a single auth
+	_, err := makeRequest(mockEnv, http.MethodPost, "/auth/register", `{"email": "jay@test.com", "password": "BlackcurrantCrush123"}`)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	// Access that same auth
+	res, err := makeRequest(mockEnv, http.MethodPost, "/auth/login", `{"email": "jay@test.com", "password":"BlackcurrantCrush123"}`)
+	if err != nil {
+		t.Fatalf("Could not make request: %s", err.Error())
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Fatalf("Wrong status code: %v", res.Code)
 	}
 }

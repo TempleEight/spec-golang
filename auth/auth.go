@@ -6,17 +6,21 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/TempleEight/spec-golang/auth/comm"
 	"github.com/TempleEight/spec-golang/auth/dao"
+	"github.com/TempleEight/spec-golang/auth/metric"
 	"github.com/TempleEight/spec-golang/auth/util"
 	valid "github.com/asaskevich/govalidator"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // env defines the environment that requests should be executed within
@@ -24,6 +28,7 @@ type env struct {
 	dao           dao.Datastore
 	comm          comm.Comm
 	jwtCredential *comm.JWTCredential
+	hook          Hook
 }
 
 // registerAuthRequest contains the client-provided information required to create a single auth
@@ -48,13 +53,20 @@ type loginAuthResponse struct {
 	AccessToken string
 }
 
-// router generates a router for this service
-func (env *env) router() *mux.Router {
+// defaultRouter generates a router for this service
+func defaultRouter(env *env) *mux.Router {
 	r := mux.NewRouter()
 	r.HandleFunc("/auth/register", env.registerAuthHandler).Methods(http.MethodPost)
 	r.HandleFunc("/auth/login", env.loginAuthHandler).Methods(http.MethodPost)
 	r.Use(jsonMiddleware)
 	return r
+}
+
+// respondWithError responds to a HTTP request with a JSON error response
+func respondWithError(w http.ResponseWriter, err string, statusCode int, requestType string) {
+	w.WriteHeader(statusCode)
+	fmt.Fprintln(w, util.CreateErrorJSON(err))
+	metric.RequestFailure.WithLabelValues(requestType, strconv.Itoa(statusCode)).Inc()
 }
 
 func main() {
@@ -69,6 +81,16 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Prometheus metrics
+	promPort, ok := config.Ports["prometheus"]
+	if !ok {
+		log.Fatal("A port for the key prometheus was not found")
+	}
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		http.ListenAndServe(fmt.Sprintf(":%d", promPort), nil)
+	}()
+
 	d, err := dao.Init(config)
 	if err != nil {
 		log.Fatal(err)
@@ -80,9 +102,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	env := env{d, c, jwtCredential}
+	env := env{d, c, jwtCredential, Hook{}}
 
-	log.Fatal(http.ListenAndServe(":82", env.router()))
+	// Call into non-generated entry-point
+	router := defaultRouter(&env)
+	env.setup(router)
+
+	servicePort, ok := config.Ports["service"]
+	if !ok {
+		log.Fatal("A port for the key service was not found")
+	}
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", servicePort), router))
 }
 
 func jsonMiddleware(next http.Handler) http.Handler {
@@ -97,109 +127,139 @@ func (env *env) registerAuthHandler(w http.ResponseWriter, r *http.Request) {
 	var req registerAuthRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		respondWithError(w, fmt.Sprintf("Invalid request parameters: %s", err.Error()), http.StatusBadRequest, metric.RequestRegister)
 		return
 	}
 
 	_, err = valid.ValidateStruct(req)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		respondWithError(w, fmt.Sprintf("Invalid request parameters: %s", err.Error()), http.StatusBadRequest, metric.RequestRegister)
 		return
 	}
 
 	// Hash and salt the password before storing
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not hash password: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
+		respondWithError(w, fmt.Sprintf("Could not hash password: %s", err.Error()), http.StatusInternalServerError, metric.RequestRegister)
 		return
 	}
 
 	uuid, err := uuid.NewUUID()
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not create UUID: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
+		respondWithError(w, fmt.Sprintf("Could not create UUID: %s", err.Error()), http.StatusInternalServerError, metric.RequestRegister)
 		return
 	}
 
-	auth, err := env.dao.CreateAuth(dao.CreateAuthInput{
+	input := dao.CreateAuthInput{
 		ID:       uuid,
 		Email:    req.Email,
 		Password: string(hashedPassword),
-	})
+	}
+
+	for _, hook := range env.hook.beforeRegisterHooks {
+		err := (*hook)(env, req, &input)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestRegister)
+			return
+		}
+	}
+
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestRegister))
+	auth, err := env.dao.CreateAuth(input)
+	timer.ObserveDuration()
 	if err != nil {
 		switch err {
 		case dao.ErrDuplicateAuth:
-			http.Error(w, util.CreateErrorJSON(err.Error()), http.StatusForbidden)
+			respondWithError(w, err.Error(), http.StatusForbidden, metric.RequestRegister)
 		default:
-			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-			http.Error(w, errMsg, http.StatusInternalServerError)
+			respondWithError(w, fmt.Sprintf("Something went wrong: %s", err.Error()), http.StatusInternalServerError, metric.RequestRegister)
 		}
 		return
 	}
 
 	accessToken, err := createToken(auth.ID, env.jwtCredential.Key, env.jwtCredential.Secret)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not create access token: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
+		respondWithError(w, fmt.Sprintf("Could not create access token: %s", err.Error()), http.StatusInternalServerError, metric.RequestRegister)
 		return
+	}
+
+	for _, hook := range env.hook.afterRegisterHooks {
+		err := (*hook)(env, auth, accessToken)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestRegister)
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(registerAuthResponse{
 		AccessToken: accessToken,
 	})
+	metric.RequestSuccess.WithLabelValues(metric.RequestRegister).Inc()
 }
 
 func (env *env) loginAuthHandler(w http.ResponseWriter, r *http.Request) {
 	var req loginAuthRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		respondWithError(w, fmt.Sprintf("Invalid request parameters: %s", err.Error()), http.StatusBadRequest, metric.RequestLogin)
 		return
 	}
 
 	_, err = valid.ValidateStruct(req)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid request parameters: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusBadRequest)
+		respondWithError(w, fmt.Sprintf("Invalid request parameters: %s", err.Error()), http.StatusBadRequest, metric.RequestLogin)
 		return
 	}
 
-	auth, err := env.dao.ReadAuth(dao.ReadAuthInput{
+	input := dao.ReadAuthInput{
 		Email: req.Email,
-	})
+	}
+
+	for _, hook := range env.hook.beforeLoginHooks {
+		err := (*hook)(env, req, &input)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestLogin)
+			return
+		}
+	}
+
+	timer := prometheus.NewTimer(metric.DatabaseRequestDuration.WithLabelValues(metric.RequestLogin))
+	auth, err := env.dao.ReadAuth(input)
+	timer.ObserveDuration()
 	if err != nil {
 		switch err {
 		case dao.ErrAuthNotFound:
-			errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid email or password"))
-			http.Error(w, errMsg, http.StatusUnauthorized)
+			respondWithError(w, fmt.Sprintf("Invalid email or password"), http.StatusUnauthorized, metric.RequestLogin)
 		default:
-			errMsg := util.CreateErrorJSON(fmt.Sprintf("Something went wrong: %s", err.Error()))
-			http.Error(w, errMsg, http.StatusInternalServerError)
+			respondWithError(w, fmt.Sprintf("Something went wrong: %s", err.Error()), http.StatusInternalServerError, metric.RequestLogin)
 		}
 		return
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(auth.Password), []byte(req.Password))
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Invalid email or password"))
-		http.Error(w, errMsg, http.StatusUnauthorized)
+		respondWithError(w, fmt.Sprintf("Invalid email or password"), http.StatusUnauthorized, metric.RequestLogin)
 		return
 	}
 
 	accessToken, err := createToken(auth.ID, env.jwtCredential.Key, env.jwtCredential.Secret)
 	if err != nil {
-		errMsg := util.CreateErrorJSON(fmt.Sprintf("Could not create access token: %s", err.Error()))
-		http.Error(w, errMsg, http.StatusInternalServerError)
+		respondWithError(w, fmt.Sprintf("Could not create access token: %s", err.Error()), http.StatusInternalServerError, metric.RequestLogin)
 		return
+	}
+
+	for _, hook := range env.hook.afterLoginHooks {
+		err := (*hook)(env, auth, accessToken)
+		if err != nil {
+			respondWithError(w, err.Error(), err.statusCode, metric.RequestLogin)
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(loginAuthResponse{
 		AccessToken: accessToken,
 	})
+	metric.RequestSuccess.WithLabelValues(metric.RequestLogin).Inc()
 }
 
 // Create an access token with a 24 hour lifetime
