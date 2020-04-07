@@ -7,6 +7,8 @@ fi
 
 REGISTRY_URL="registry.lewiky.com"
 
+docker login --username "${DOCKER_USERNAME}" --password "${DOCKER_PASSWORD}" "${REGISTRY_URL}"
+
 for service in "user" "auth" "match"; do
   docker build -t "$REGISTRY_URL/temple-$service-service" $service
   docker push "$REGISTRY_URL/temple-$service-service"
