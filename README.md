@@ -3,6 +3,7 @@
 This repository holds the example microservice backend written for the development of [Temple](https://github.com/TempleEight/temple), and is therefore written with the goal of being as general as possible.
 
 This example models the backend for a dating application, with services for users and matches, as well as a separate service for authentication.
+
 * PostgreSQL is used as the backing datastore
 * Kong acts as the API gateway and load balancer
 * Prometheus and Grafana are used for gathering and displaying metrics
