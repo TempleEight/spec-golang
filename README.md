@@ -11,5 +11,6 @@ This example models the backend for a dating application, with services for user
 * Scripts are supplied for orchestration with either Kubernetes or Docker Compose
 
 For more information on the architecture we settled on, check out the docs:
+
 * [System Architecture](https://templeeight.github.io/temple-docs/docs/arch/system)
 * [Service Architecture](https://templeeight.github.io/temple-docs/docs/arch/service)
